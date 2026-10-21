@@ -119,6 +119,11 @@
   .dbtns .btn { flex:1; min-width:140px; padding:11px 12px; }
   .drow { cursor:pointer; }
   .pick { cursor:pointer; align-items:center; }
+  .qins { display:flex; gap:6px; flex:none; }
+  .qin { display:flex; flex-direction:column; align-items:center; font-size:11px; color:var(--muted); }
+  .qty.sm { width:66px; font-size:17px; padding:8px 4px; }
+  #sum.picker .sheet { max-height:88vh; display:flex; flex-direction:column; }
+  #sum.picker .slist { flex:1; max-height:none; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
 </style>
 </head>
@@ -133,7 +138,7 @@
   <h2 id="pTitle"></h2><div id="pBody" class="pbody"></div>
   <div class="btns"><button class="btn clear" id="pClose" onclick="closePhoto()">Close</button></div>
 </div></div>
-<div class="modal" id="sum" onclick="closeSum()"><div class="sheet" onclick="event.stopPropagation()">
+<div class="modal" id="sum" onclick="closePick()"><div class="sheet" onclick="event.stopPropagation()">
   <h2 id="sTitle"></h2><p id="sText"></p><div class="slist" id="sList"></div>
   <div class="btns col" id="sBtns"></div>
 </div></div>
@@ -650,20 +655,20 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   items:n=>`${n} item${n===1?'':'s'}`, by:'by', back:'‹ Back', addItem:'+ Add item', pickTitle:'Add item', note:'Note (optional)',
   req:'asked', sentQ:'sent', recvQ:'received', submitOrder:'Send order to Jinjang', submitReq:'Send request to BSD', submitSend:'Mark as sent',
   markSent:'Mark as sent', markRecv:'Confirm received', cancelDO:'Cancel this order', cancelled:'Cancelled', sentOk:'Marked as sent ✓', recvOk:'Received ✓', createdOk:id=>`${id} created ✓`,
-  checkQty:'Type the quantity actually sent', checkRecv:'Type the quantity actually received (lower it if damaged / short)',
+  checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', remove:'remove' });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove' });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
   items:n=>`${n} 项`, by:'由', back:'‹ 返回', addItem:'+ 加货品', pickTitle:'加货品', note:'备注（可不填）',
   req:'要', sentQ:'发', recvQ:'收', submitOrder:'发订单给增江', submitReq:'发要货单给 BSD', submitSend:'确认已发出',
   markSent:'确认已发出', markRecv:'确认已收到', cancelDO:'取消这张单', cancelled:'已取消', sentOk:'已发出 ✓', recvOk:'已收到 ✓', createdOk:id=>`${id} 已建立 ✓`,
-  checkQty:'填实际发出的数量', checkRecv:'填实际收到的数量（坏了 / 少了就改小）',
+  checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', remove:'删除' });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除' });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -720,70 +725,80 @@ function doRow(o, hot){
     <div class="name" style="color:${hot?'var(--brand)':'var(--ink)'}">${esc(o.id)} · ${T('d'+o.dir)}</div>
     <div class="meta">${stName(o.status)} · ${esc(t)} · ${T('items', n)} · ${T('by')} ${esc(areaName(o.createdBy))}${o.note?' · '+esc(o.note):''}</div></div><span class="sub">›</span></div>`;
 }
+// ---------- Quantity inputs: weighed items get a second box for the total kg ----------
+function qtyBox(attr, unit, v){ return `<label class="qin"><input class="qty sm" inputmode="decimal" ${attr} value="${esc(v)}" placeholder="–"><span>${esc(unit)}</span></label>`; }
+function kgBox(attr, v){ return `<label class="qin"><input class="qty sm kg" inputmode="decimal" ${attr} value="${esc(v)}" placeholder="–"><span>kg</span></label>`; }
+function fmtQ(q, unit, kg){ return `${esc(q)} ${esc(unit)}${kg!=='' && kg!==undefined && kg!==null ? ` (${esc(kg)} kg)` : ''}`; }
+const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
 function newDO(mode){
   DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => i.def).map(i => ({ id:i.id, name:i.name, zh:i.zh, unit:i.unit, qty:'' })) : [];
+  DLINES = mode === 'order' ? DV.items.filter(i => i.def).map(i => ({ id:i.id, name:i.name, zh:i.zh, unit:i.unit, wt:i.wt, qty:'', kg:'' })) : [];
   renderDeliv(); window.scrollTo(0, 0);
 }
 function renderNew(){
-  const m = DVIEW.mode, title = T(m==='order'?'newOrderT':m==='request'?'newReqT':'newSendT');
+  const m = DVIEW.mode, title = T(m==='order'?'newOrderT':m==='request'?'newReqT':'newSendT'), withKg = m === 'send';
   $('#app').innerHTML = dHeader(title) +
     `<div class="dbtns"><button class="btn ghost" onclick="DVIEW=null;renderDeliv()">${T('back')}</button><button class="btn ghost" onclick="openPick()">${T('addItem')}</button></div>
+    ${withKg && DLINES.some(l => l.wt) ? `<div class="cmeta" style="padding:8px 14px 0"><b>${T('weighHint')}</b></div>` : ''}
     <div class="list" style="margin-top:10px">${DLINES.map((l, k) => `<div class="row"><div class="info"><div class="name">${lineName(l)}</div>
-      <div class="meta">${esc(l.unit)}${m!=='order' || !DV.items.find(i => i.id===l.id && i.def) ? ` · <a href="#" onclick="DLINES.splice(${k},1);renderNew();return false">${T('remove')}</a>` : ''}</div></div>
-      <input class="qty" inputmode="decimal" data-k="${k}" value="${esc(l.qty)}" placeholder="–"></div>`).join('') || `<div class="empty">${T('addSome')}</div>`}</div>
+      <div class="meta">${l.wt ? T('weighed') : esc(l.unit)}${m!=='order' || !DV.items.find(i => i.id===l.id && i.def) ? ` · <a href="#" onclick="DLINES.splice(${k},1);renderNew();return false">${T('remove')}</a>` : ''}</div></div>
+      <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty)}${withKg && l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('') || `<div class="empty">${T('addSome')}</div>`}</div>
     <div class="tools"><input id="dnote" placeholder="${T('note')}" value="${esc(DNOTE)}"></div><div class="spacer"></div>
     <footer><div class="prog" id="prog"></div><button class="btn save" id="dsub" onclick="submitNew()">${T(m==='order'?'submitOrder':m==='request'?'submitReq':'submitSend')}</button></footer>`;
-  document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => { DLINES[e.target.dataset.k].qty = e.target.value.trim(); footNew(); }));
+  document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => { DLINES[e.target.dataset.k][e.target.dataset.f] = e.target.value.trim(); footNew(); }));
   $('#dnote').addEventListener('input', e => DNOTE = e.target.value);
   footNew();
 }
 function footNew(){ const n = DLINES.filter(l => Number(l.qty) > 0).length; $('#prog').textContent = T('items', n); }
 async function submitNew(){
-  const lines = DLINES.filter(l => l.qty !== '');
-  if (lines.find(l => isNaN(Number(l.qty)))) { toast(T('numbers')); return; }
-  const send = lines.filter(l => Number(l.qty) > 0).map(l => ({ id:l.id, qty:Number(l.qty) }));
+  if (DLINES.find(l => bad(l.qty) || bad(l.kg))) { toast(T('numbers')); return; }
+  const send = DLINES.filter(l => Number(l.qty) > 0).map(l => ({ id:l.id, qty:Number(l.qty), kg: l.kg === '' ? '' : Number(l.kg) }));
   if (!send.length) { toast(T('addSome')); return; }
+  if (DVIEW.mode === 'send') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
   const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
   try { const id = await call('createDelivery', PIN, DVIEW.mode, send, DNOTE.trim()); toast(T('createdOk', id)); await reloadDeliv(); }
   catch(e){ b.disabled = false; renderNew(); toast(String(e.message||e)); }
 }
-// ---------- Item picker ----------
+// ---------- Item picker (whole list, A–Z, scrolls inside the sheet) ----------
 function openPick(){
   $('#sTitle').textContent = T('pickTitle'); $('#sText').innerHTML = `<input id="pq" class="pq" placeholder="${T('search')}">`;
-  $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
-  drawPick(''); $('#sum').classList.add('show');
+  $('#sBtns').innerHTML = `<button class="btn clear" onclick="closePick()">${T('close')}</button>`;
+  $('#sum').classList.add('show', 'picker'); drawPick('');
   $('#pq').addEventListener('input', e => drawPick(e.target.value));
 }
 function drawPick(q){
-  q = q.toLowerCase(); const have = {}; DLINES.forEach(l => have[l.id] = 1);
+  q = q.toLowerCase(); const have = {}; (DVIEW.kind === 'new' ? DLINES : DVIEW.extra).forEach(l => have[l.id] = 1);
+  if (DVIEW.kind === 'do') { const o = DV.list.find(x => x.id === DVIEW.id); if (o) o.lines.forEach(l => have[l.id] = 1); }
   const list = DV.items.filter(i => !have[i.id] && (!q || (i.name+' '+i.zh+' '+i.id).toLowerCase().includes(q)))
-    .sort((a, b) => (b.def - a.def) || a.name.localeCompare(b.name)).slice(0, 80);
-  $('#sList').innerHTML = list.map(i => `<div class="srow pick" onclick="pickItem('${esc(i.id)}')"><span>${lineName(i)}</span><b class="sub">${esc(i.unit)}</b></div>`).join('') || `<div class="empty">${T('noItems')}</div>`;
+    .sort((a, b) => itemName(a).localeCompare(itemName(b), LANG==='zh' ? 'zh-Hans-CN-u-co-pinyin' : 'en', {sensitivity:'base'}));
+  $('#sList').innerHTML = list.map(i => `<div class="srow pick" onclick="pickItem('${esc(i.id)}')"><span>${lineName(i)}</span><b class="sub">${esc(i.wt ? i.unit + ' · kg' : i.unit)}</b></div>`).join('') || `<div class="empty">${T('noItems')}</div>`;
+  $('#sList').scrollTop = 0;
 }
+function closePick(){ $('#sum').classList.remove('picker'); closeSum(); }
 function pickItem(id){
   const i = DV.items.find(x => x.id === id); if (!i) return;
-  if (DVIEW.kind === 'new') { DLINES.push({ id:i.id, name:i.name, zh:i.zh, unit:i.unit, qty:'' }); closeSum(); renderNew(); }
-  else { DVIEW.extra.push({ id:i.id, name:i.name, zh:i.zh, unit:i.unit, qty:'' }); closeSum(); renderDO(); }
-  const inps = document.querySelectorAll('#app .qty'); if (inps.length) inps[inps.length-1].focus();
+  const l = { id:i.id, name:i.name, zh:i.zh, unit:i.unit, wt:i.wt, qty:'', kg:'' };
+  if (DVIEW.kind === 'new') { DLINES.push(l); closePick(); renderNew(); }
+  else { DVIEW.extra.push(l); closePick(); renderDO(); }
+  const inps = [...document.querySelectorAll('#app .qty')].filter(x => !x.classList.contains('kg')); if (inps.length) inps[inps.length-1].focus();
 }
 // ---------- One delivery ----------
-function openDO(id){ DVIEW = { kind:'do', id, extra:[], q:{} }; renderDeliv(); window.scrollTo(0, 0); }
+function openDO(id){ DVIEW = { kind:'do', id, extra:[], q:{}, k:{} }; renderDeliv(); window.scrollTo(0, 0); }
 function renderDO(){
   const o = DV.list.find(x => x.id === DVIEW.id); if (!o) { DVIEW = null; return renderDeliv(); }
   const send = canSend(o), recv = canRecv(o), own = isOwnerD();
   const rows = o.lines.map(l => {
-    const base = send ? l.req : recv ? l.sent : '';
-    const v = l.line in DVIEW.q ? DVIEW.q[l.line] : (base === '' ? '' : base);
-    const nums = [l.req!==''?`${T('req')} ${esc(l.req)}`:'', l.sent!==''?`${T('sentQ')} ${esc(l.sent)}`:'', l.recv!==''?`${T('recvQ')} ${esc(l.recv)}`:''].filter(Boolean).join(' · ');
-    const money = own && l.amount !== undefined && l.amount !== '' ? ` · RM ${Number(l.amount).toFixed(2)}` : (own && l.price !== '' && l.price !== undefined ? ` · @RM ${Number(l.price).toFixed(2)}` : '');
+    const base = send ? l.req : recv ? l.sent : '', baseKg = recv ? l.sentKg : '';
+    const v = l.line in DVIEW.q ? DVIEW.q[l.line] : base, vk = l.line in DVIEW.k ? DVIEW.k[l.line] : baseKg;
+    const nums = [l.req!==''?`${T('req')} ${fmtQ(l.req, l.unit)}`:'', l.sent!==''?`${T('sentQ')} ${fmtQ(l.sent, l.unit, l.sentKg)}`:'', l.recv!==''?`${T('recvQ')} ${fmtQ(l.recv, l.unit, l.recvKg)}`:''].filter(Boolean).join(' · ');
+    const money = own && l.amount !== undefined && l.amount !== '' ? ` · RM ${Number(l.amount).toFixed(2)}` : (own && l.price !== '' && l.price !== undefined ? ` · @RM ${Number(l.price).toFixed(2)}/${l.wt?'kg':esc(l.unit)}` : '');
     return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.added?' <span class="sub">+</span>':''}</div>
-      <div class="meta">${esc(l.unit)}${nums?' · '+nums:''}${money}</div></div>
-      ${send || recv ? `<input class="qty" inputmode="decimal" data-line="${esc(l.line)}" value="${esc(v)}">` : ''}</div>`; }).join('') +
+      <div class="meta">${nums || esc(l.unit)}${money}</div></div>
+      ${send || recv ? `<div class="qins">${qtyBox(`data-line="${esc(l.line)}" data-f="q"`, l.unit, v)}${l.wt ? kgBox(`data-line="${esc(l.line)}" data-f="k"`, vk) : ''}</div>` : ''}</div>`; }).join('') +
     DVIEW.extra.map((l, k) => `<div class="row"><div class="info"><div class="name">${lineName(l)} <span class="sub">+</span></div>
-      <div class="meta">${esc(l.unit)} · <a href="#" onclick="DVIEW.extra.splice(${k},1);renderDO();return false">${T('remove')}</a></div></div>
-      <input class="qty" inputmode="decimal" data-k="${k}" value="${esc(l.qty)}" placeholder="–"></div>`).join('');
+      <div class="meta">${l.wt ? T('weighed') : esc(l.unit)} · <a href="#" onclick="DVIEW.extra.splice(${k},1);renderDO();return false">${T('remove')}</a></div></div>
+      <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty)}${l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('');
   const total = own && o.status === 'Received' ? o.lines.reduce((a, l) => a + (Number(l.amount)||0), 0) : null;
   const info = [stName(o.status), `${T('by')} ${esc(areaName(o.createdBy))} ${esc(o.createdAt)}`, o.sentAt ? `${T('sentAt')} ${esc(o.sentAt)}` : '', o.receivedAt ? `${T('sReceived')} ${esc(o.receivedAt)}` : ''].filter(Boolean).join(' · ');
   const act = send ? `<button class="btn save" id="dsub" onclick="doSend()">${T('markSent')}</button>` : recv ? `<button class="btn save" id="dsub" onclick="doRecv()">${T('markRecv')}</button>` : '';
@@ -794,22 +809,27 @@ function renderDO(){
     ${total !== null ? `<div class="srow tot" style="margin:10px 14px"><span>${T('total')}</span><b>RM ${total.toFixed(2)}</b></div>` : ''}
     <div class="spacer"></div>${act ? `<footer><div class="prog">${T('items', o.lines.length + DVIEW.extra.length)}</div>${act}</footer>` : ''}`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
-    if (e.target.dataset.line) DVIEW.q[e.target.dataset.line] = e.target.value.trim(); else DVIEW.extra[e.target.dataset.k].qty = e.target.value.trim(); }));
+    const t = e.target, v = t.value.trim();
+    if (t.dataset.line) DVIEW[t.dataset.f][t.dataset.line] = v; else DVIEW.extra[t.dataset.k][t.dataset.f] = v; }));
 }
-function doLines(o, base){
-  const out = o.lines.map(l => ({ line:l.line, qty: l.line in DVIEW.q ? DVIEW.q[l.line] : l[base] }));
-  DVIEW.extra.forEach(l => out.push({ id:l.id, qty:l.qty }));
-  if (out.find(x => x.qty !== '' && x.qty !== null && isNaN(Number(x.qty)))) { toast(T('numbers')); return null; }
-  return out.map(x => ({ ...x, qty: Number(x.qty) || 0 }));
+function doLines(o, recv){
+  const out = o.lines.map(l => ({ line:l.line, wt:l.wt, name:itemName(l),
+    qty: l.line in DVIEW.q ? DVIEW.q[l.line] : (recv ? l.sent : l.req),
+    kg: l.line in DVIEW.k ? DVIEW.k[l.line] : (recv ? l.sentKg : '') }));
+  DVIEW.extra.forEach(l => out.push({ id:l.id, wt:l.wt, name:itemName(l), qty:l.qty, kg:l.kg }));
+  if (out.find(x => bad(x.qty) || bad(x.kg))) { toast(T('numbers')); return null; }
+  const miss = out.find(x => x.wt && Number(x.qty) > 0 && !(Number(x.kg) > 0));
+  if (miss) { toast(T('needKg', miss.name)); return null; }
+  return out.map(x => { const r = { qty: Number(x.qty) || 0, kg: x.kg === '' || x.kg === undefined ? '' : Number(x.kg) }; if (x.line) r.line = x.line; else r.id = x.id; return r; });
 }
-async function doAct(fn, base, okMsg){
-  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, base); if (!lines) return;
+async function doAct(fn, recv, okMsg){
+  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, recv); if (!lines) return;
   const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
   try { await call(fn, PIN, o.id, lines); toast(T(okMsg)); await reloadDeliv(); }
-  catch(e){ toast(String(e.message||e)); await reloadDeliv(); }
+  catch(e){ toast(String(e.message||e)); b.disabled = false; b.textContent = T(recv ? 'markRecv' : 'markSent'); }
 }
-function doSend(){ doAct('sendDelivery', 'req', 'sentOk'); }
-function doRecv(){ doAct('receiveDelivery', 'sent', 'recvOk'); }
+function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
+function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
 let CANCEL_ARMED = '';
 async function doCancel(){
   const id = DVIEW.id;
