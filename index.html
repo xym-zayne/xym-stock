@@ -580,11 +580,10 @@ applyStatic();
 // ================= Supplier Ordering (owner) =================
 // Owner: load the other tabs in the background so switching tabs is instant
 function prefetchOwner(){
-  call('getOrders', PIN).then(d => { OD = d; }).catch(()=>{});
-  call('getMonthEnd', PIN).then(d => { if (!MD) MD = d; }).catch(()=>{});
-  prefetchDeliv();
+  // one combined call, a moment after the first screen is up (so it never slows the opening)
+  setTimeout(() => call('getOwnerBundle', PIN).then(b => { if (!OD) OD = b.orders; if (!MD) MD = b.me; if (!DV) DV = b.deliv; }).catch(()=>{}), 1500);
 }
-function prefetchDeliv(){ call('getDeliveries', PIN).then(d => { if (!DV) DV = d; }).catch(()=>{}); }
+function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { if (!DV) DV = d; }).catch(()=>{}), 1500); }
 async function loadOrders(){
   MODE = 'order';
   if (OD) { renderOrders(); refreshOrders(); return; }
