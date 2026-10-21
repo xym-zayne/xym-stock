@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<title>XYM Inventory</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#b5462f">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="XYM Stock">
+
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<style>
+  :root { --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#7a776f; --line:#e7e4dd;
+          --red:#c8372d; --green:#2f7d4f; --brand:#b5462f; --brand-ink:#fff; }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  body { margin:0; background:var(--bg); color:var(--ink);
+         font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; }
+  header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line);
+           padding:10px 14px; display:flex; align-items:center; gap:10px; }
+  header h1 { font-size:17px; margin:0; flex:1; }
+  header .who { font-size:12px; color:var(--muted); text-align:right; }
+  header button { border:0; background:none; color:var(--muted); font-size:12px; text-decoration:underline; padding:0; }
+  .tools { padding:10px 14px 0; display:flex; gap:8px; }
+  .tools input { flex:1; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; background:var(--card); }
+  .chips { padding:8px 14px 0; display:flex; gap:6px; flex-wrap:wrap; }
+  .chip { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:5px 12px; font-size:13px; }
+  .chip.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .group { margin:14px 14px 4px; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .list { background:var(--card); margin:0 10px; border-radius:12px; border:1px solid var(--line); overflow:hidden; }
+  .row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid var(--line); }
+  .row:first-child { border-top:0; }
+  .info { flex:1; min-width:0; }
+  .name { font-weight:600; word-break:break-word; }
+  .row.todo .name { color:var(--red); }
+  .row.done .name::after { content:" ✓"; color:var(--green); font-weight:700; }
+  .hint { font-size:12.5px; color:var(--muted); margin-top:1px; }
+  .meta { font-size:11.5px; color:var(--muted); margin-top:2px; }
+  .qty { width:84px; flex:none; text-align:center; font-size:18px; padding:9px 6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; }
+  .qty:focus { outline:none; border-color:var(--ink); }
+  .qty.changed { border-color:var(--brand); background:#fdf3ef; }
+  .spacer { height:96px; }
+  footer { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line);
+           padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:10px; align-items:center; }
+  footer .prog { flex:1; font-size:13px; color:var(--muted); }
+  .btn { border:0; border-radius:10px; padding:12px 16px; font-size:15px; font-weight:600; }
+  .btn.save { background:var(--brand); color:var(--brand-ink); min-width:110px; }
+  .btn.save:disabled { opacity:.45; }
+  .btn.clear { background:#efece6; color:var(--ink); }
+  .center { max-width:320px; margin:18vh auto 0; padding:0 20px; text-align:center; }
+  .center h1 { font-size:22px; margin:0 0 4px; }
+  .center p { color:var(--muted); margin:0 0 18px; }
+  .pin { width:100%; font-size:28px; letter-spacing:.4em; text-align:center; padding:12px; border:1.5px solid var(--line); border-radius:12px; }
+  .err { color:var(--red); min-height:20px; margin:10px 0; font-size:14px; }
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:flex-end; justify-content:center; z-index:20; }
+  .modal.show { display:flex; }
+  .sheet { background:#fff; width:100%; max-width:480px; border-radius:16px 16px 0 0; padding:20px 18px calc(18px + env(safe-area-inset-bottom)); }
+  .sheet h2 { margin:0 0 6px; font-size:18px; }
+  .sheet p { margin:0 0 16px; color:var(--muted); }
+  .sheet .btns { display:flex; gap:10px; }
+  .sheet .btns .btn { flex:1; }
+  .btn.danger { background:var(--red); color:#fff; }
+  .toast { position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:var(--ink); color:#fff;
+           padding:9px 16px; border-radius:999px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; }
+  .toast.show { opacity:1; }
+  .lang { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:4px 10px; font-size:13px; font-weight:600; color:var(--ink); text-decoration:none; }
+  .center .lang { position:absolute; top:14px; right:14px; }
+  .sub { font-weight:400; color:var(--muted); font-size:13px; }
+  .empty { padding:30px; text-align:center; color:var(--muted); }
+  .name.ph { cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
+  .phtag { color:var(--brand); font-weight:600; }
+  .pbody { min-height:120px; display:flex; align-items:center; justify-content:center; margin:0 0 16px; color:var(--muted); }
+  .pbody img { max-width:100%; max-height:60vh; border-radius:10px; }
+  .tabs { display:flex; gap:6px; padding:8px 14px 0; }
+  .tab { flex:1; border:1px solid var(--line); background:var(--card); border-radius:10px; padding:8px; font-size:14px; font-weight:600; color:var(--muted); }
+  .tab.on { background:var(--ink); color:#fff; border-color:var(--ink); }
+  .banner { margin:10px 10px 0; padding:12px; border-radius:12px; background:#fdf3ef; border:1px solid #f0d3c8; font-size:14px; }
+  .banner .btn { margin-top:8px; width:100%; }
+  .btn.ghost { background:#efece6; color:var(--ink); }
+  .srow { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-top:1px solid var(--line); font-size:14px; }
+  .srow:first-child { border-top:0; }
+  .srow b { white-space:nowrap; }
+  .srow.tot { font-size:16px; border-top:2px solid var(--ink); }
+  .slist { max-height:45vh; overflow:auto; margin-bottom:14px; }
+  .sheet .btns.col { flex-direction:column; }
+  .qty:disabled { background:#f1efea; color:var(--muted); }
+  .card { background:var(--card); margin:10px; border-radius:12px; border:1px solid var(--line); overflow:hidden; }
+  .card h3 { margin:0; padding:12px 12px 2px; font-size:16px; }
+  .card .cmeta { padding:0 12px 8px; font-size:13px; color:var(--muted); }
+  .msg { margin:0 12px 10px; padding:10px; background:#f1efea; border-radius:10px; font-size:15px; }
+  .warn { margin:0 12px 10px; color:var(--red); font-size:13.5px; }
+  .ok { color:var(--green); font-weight:600; }
+  .card .actions { display:flex; gap:8px; padding:0 12px 12px; }
+  .card .actions .btn { flex:1; text-align:center; text-decoration:none; }
+  .btn.wa { background:#25a244; color:#fff; }
+  .btn.wa.dis { opacity:.45; pointer-events:none; }
+  .idle { margin:14px 10px; padding:10px 12px; border:1px dashed var(--line); border-radius:12px; color:var(--muted); font-size:13.5px; }
+  .idle b { color:var(--ink); font-weight:600; }
+  .idle .it { padding:6px 0; border-top:1px solid var(--line); cursor:pointer; }
+  .idle .it:first-of-type { border-top:0; }
+</style>
+</head>
+<body>
+<div id="app"></div>
+<div class="modal" id="confirm"><div class="sheet">
+  <h2 id="cTitle">Clear count?</h2><p id="cText"></p>
+  <div class="btns"><button class="btn clear" id="cCancel" onclick="closeConfirm()">Cancel</button>
+  <button class="btn danger" id="cOk" onclick="doClear()">Clear</button></div>
+</div></div>
+<div class="modal" id="photo" onclick="closePhoto()"><div class="sheet" onclick="event.stopPropagation()">
+  <h2 id="pTitle"></h2><div id="pBody" class="pbody"></div>
+  <div class="btns"><button class="btn clear" id="pClose" onclick="closePhoto()">Close</button></div>
+</div></div>
+<div class="modal" id="sum" onclick="closeSum()"><div class="sheet" onclick="event.stopPropagation()">
+  <h2 id="sTitle"></h2><p id="sText"></p><div class="slist" id="sList"></div>
+  <div class="btns col" id="sBtns"></div>
+</div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+let PIN = null, DATA = null, FILTER = '', GROUP = 'All', EDITS = {};
+let MODE = 'daily', MODE_SET = '', MD = null, MLOC = 'All', MEDITS = {}, OD = null;
+const $ = s => document.querySelector(s);
+const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
+                set(k,v){ try{ localStorage.setItem(k,v); }catch(e){} },
+                del(k){ try{ localStorage.removeItem(k); }catch(e){} } };
+function esc(s){ return String(s==null?'':s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('show'); setTimeout(()=>el.classList.remove('show'), 1800); }
+// Inside Google (browser link): google.script.run. Installable app: POST to the same script's web-app URL.
+const API_URL = 'https:\/\/script.google.com/macros/s/AKfycbz3iJWKR2UyudaZZuEXOfWaPLTFl9QH1fwy4xCRXQIFQAj9ci7ztmW5pi64WDFNJMQSZw/exec';
+function call(fn, ...args){
+  if (window.google && google.script && google.script.run)
+    return new Promise((ok, bad) => google.script.run.withSuccessHandler(ok).withFailureHandler(e => bad(e))[fn](...args));
+  return fetch(API_URL, { method:'POST', body: JSON.stringify({ fn, args }) })
+    .then(r => r.json()).then(r => { if (!r.ok) throw new Error(r.error); return r.data; });
+}
+
+// ---------- Language (English / 中文), remembered on this phone ----------
+let LANG = store.get('xym_lang') || 'en';
+const TXT = {
+  en: { title:'Daily Count', logout:'Log out', search:'Search item…', pin:'Enter your PIN', login:'Log in', checking:'Checking…',
+        wrongPin:'Wrong PIN', again:'Please log in again', loading:'Loading…', noItems:'No items', all:'All',
+        prog:(d,n)=>`${d}/${n} counted today`, unsaved:n=>` · ${n} unsaved`, clear:'Clear', save:'Save', saveN:n=>`Save (${n})`,
+        numbers:'Numbers only please', saved:n=>`Saved ${n} item${n===1?'':'s'} ✓`, cleared:n=>`Cleared ${n} item${n===1?'':'s'}`,
+        clearAllT:'Clear ALL daily counts?', clearAllX:'Every daily quantity for all areas will be blanked.',
+        clearT:a=>`Clear ${a} count?`, clearX:a=>`Only ${a} items are cleared. Other areas are not touched.`,
+        cancel:'Cancel', close:'Close', loadingPhoto:'Loading photo…', noPhoto:'No photo yet', photoFail:'Could not load photo',
+        photo:'Photo', last:'last', notSent:'⚠ not sent yet – retrying', clearNotSent:'⚠ clear not sent yet – retrying',
+        clearFail:'Clear failed – check internet', listChanged:'Item list changed – reloading', noConn:'No connection', retry:'Try again',
+        report:'Send report', other:'中文',
+        rDone:(a,w)=>`✅ ${a} count done – ${w}`, rNot:(a,w)=>`⚠️ ${a} count NOT complete – ${w}`, rCounted:(d,n)=>`${d}/${n} counted`,
+        rLow:'Low (below min):', rMin:'min', rMissing:'Not counted:', rNone:'none',
+        daily:'Daily', month:'Month-End', meTitle:'Month-End Count', meProg:(d,n)=>`${d}/${n} counted`,
+        summary:'Summary', start:'Start month-end now', closeME:'Close month-end', exportX:'Export Excel',
+        meOff:'Month-end count is not open.', meNext:d=>`Next month-end: ${d}`, meOn:d=>`Month-end open since ${d}`,
+        meAuto:'Opens by itself on the dates in the MonthEndDates tab.', total:'Total', making:'Making Excel file…',
+        download:'Download Excel', openSheet:'Open in Google Sheets', started:'Month-end started', closedMsg:'Month-end closed',
+        sumTitle:'Month-End Summary', sumText:(d,n)=>`${d}/${n} lines counted · value = qty × unit price`, closeConfirm:'Close month-end? Staff go back to the daily count.',
+        order:'Order', orderTitle:'Supplier Order', delivery:d=>`For delivery tomorrow (${d})`, offTmr:(n,d)=>`${n} is off tomorrow (${d}) – no order today`,
+        beforeOff:'Day before their off day – stock up to the higher par', onHand:'on hand', par:'par', notToday:d=>`⚠ not counted today${d?' (last '+d+')':''}`,
+        countedToday:'counted today', underMin:(t,m)=>`⚠ Total ${t} – under minimum order ${m}, supplier may not deliver`,
+        sendWa:'Send on WhatsApp', copy:'Copy message', copied:'Copied', orderedToday:'✓ Ordered today', recorded:'Order recorded', noOrder:'Nothing to order', belowMinShort:(n,m)=>`only ${n} needed, under minimum ${m}`, idleTitle:'No order needed today', enough:'stock enough', nothingToday:'Nothing to order today ✓', tapOpen:'tap to order by hand', closeCard:'close', belowMin:(n,m)=>`No order today – only ${n} needed, under minimum ${m}`, noSup:'No supplier items set up yet' },
+  zh: { title:'每日盘点', logout:'登出', search:'搜索货品…', pin:'请输入密码', login:'登录', checking:'检查中…',
+        wrongPin:'密码错误', again:'请重新登录', loading:'加载中…', noItems:'没有货品', all:'全部',
+        prog:(d,n)=>`今日已点 ${d}/${n}`, unsaved:n=>` · ${n} 项未保存`, clear:'清除', save:'保存', saveN:n=>`保存 (${n})`,
+        numbers:'请只输入数字', saved:n=>`已保存 ${n} 项 ✓`, cleared:n=>`已清除 ${n} 项`,
+        clearAllT:'清除所有每日盘点？', clearAllX:'所有区域的每日数量都会被清空。',
+        clearT:a=>`清除${a}的盘点？`, clearX:a=>`只清除${a}的货品，其他区域不受影响。`,
+        cancel:'取消', close:'关闭', loadingPhoto:'照片加载中…', noPhoto:'还没有照片', photoFail:'照片加载失败',
+        photo:'照片', last:'上次', notSent:'⚠ 尚未发送 – 重试中', clearNotSent:'⚠ 清除尚未发送 – 重试中',
+        clearFail:'清除失败 – 请检查网络', listChanged:'货品清单已更改 – 重新加载', noConn:'没有网络', retry:'重试',
+        report:'发送报告', other:'EN',
+        rDone:(a,w)=>`✅ ${a}盘点完成 – ${w}`, rNot:(a,w)=>`⚠️ ${a}盘点未完成 – ${w}`, rCounted:(d,n)=>`已点 ${d}/${n}`,
+        rLow:'低于最低量：', rMin:'最低', rMissing:'未点：', rNone:'无',
+        daily:'每日', month:'月底', meTitle:'月底盘点', meProg:(d,n)=>`已点 ${d}/${n}`,
+        summary:'总结', start:'现在开始月底盘点', closeME:'结束月底盘点', exportX:'导出 Excel',
+        meOff:'月底盘点还没开始。', meNext:d=>`下次月底盘点：${d}`, meOn:d=>`月底盘点已开始（${d}）`,
+        meAuto:'到了 MonthEndDates 里的日期会自动开始。', total:'总计', making:'正在生成 Excel…',
+        download:'下载 Excel', openSheet:'用 Google Sheets 打开', started:'月底盘点已开始', closedMsg:'月底盘点已结束',
+        sumTitle:'月底总结', sumText:(d,n)=>`已点 ${d}/${n} 行 · 价值 = 数量 × 单价`, closeConfirm:'结束月底盘点？员工会回到每日盘点。',
+        order:'订货', orderTitle:'供应商订货', delivery:d=>`明天送货（${d}）`, offTmr:(n,d)=>`${n} 明天休息（${d}）– 今天不用订`,
+        beforeOff:'明天之后是休息日 – 订到较高的库存量', onHand:'现有', par:'标准量', notToday:d=>`⚠ 今天还没点${d?'（上次 '+d+'）':''}`,
+        countedToday:'今天已点', underMin:(t,m)=>`⚠ 总数 ${t} – 少于最低订量 ${m}，供应商可能不送`,
+        sendWa:'用 WhatsApp 发送', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
+};
+const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江' };
+function T(k, ...a){ const v = TXT[LANG][k]; return typeof v === 'function' ? v(...a) : v; }
+function areaName(a){ return LANG==='zh' ? (AREA_ZH[a] || a) : a; }
+function itemName(i){ return LANG==='zh' && i.zh ? i.zh : i.name; }
+function itemSub(i){ return LANG==='zh' ? (i.zh ? i.name : '') : i.zh; }
+function itemHint(i){ return LANG==='zh' && i.hintZh ? i.hintZh : i.hint; }
+function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (DATA) render(); else showLogin(); }
+function applyStatic(){ $('#cCancel').textContent=T('cancel'); $('#cOk').textContent=T('clear'); $('#pClose').textContent=T('close'); }
+
+// ---------- Login ----------
+function showLogin(msg){
+  $('#app').innerHTML = `<div class="center"><button class="lang" onclick="switchLang()">${T('other')}</button>
+    <h1>XYM Inventory</h1><p>${T('pin')}</p>
+    <input class="pin" id="pin" type="password" inputmode="numeric" maxlength="6" autofocus>
+    <div class="err" id="err">${esc(msg||'')}</div>
+    <button class="btn save" style="width:100%" onclick="tryLogin()">${T('login')}</button></div>`;
+  $('#pin').addEventListener('keydown', e => { if(e.key==='Enter') tryLogin(); });
+}
+async function tryLogin(){
+  const p = $('#pin').value.trim(); if(!p) return;
+  $('#err').textContent = T('checking');
+  try { await call('login', p); PIN = p; store.set('xym_pin', p); load(); }
+  catch(e){ const msg = String(e && e.message || e || ''); $('#err').textContent = msg.includes('PIN') ? T('wrongPin') : T('noConn') + ' – ' + msg; }
+}
+function logout(){ store.del('xym_pin'); PIN=null; DATA=null; MD=null; MODE='daily'; MODE_SET=''; showLogin(); }
+
+async function load(){
+  $('#app').innerHTML = `<div class="empty">${T('loading')}</div>`;
+  try {
+    if ((store.get('xym_pending')||'[]') !== '[]') await flush();
+    DATA = await call('getDaily', PIN); EDITS = {};
+    if (DATA.me && DATA.me.active && MODE_SET !== 'daily') { MODE = 'month'; return loadME(); }
+    if (DATA.user.role !== 'Owner') MODE = 'daily';
+    JSON.parse(store.get('xym_pending')||'[]').forEach(c => {   // still-unsent counts stay visible
+      const it = DATA.items.find(x => x.row===c.row); if (!it) return;
+      it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.last=''; });
+    MODE = 'daily'; render();
+    if (DATA.user.role === 'Owner') prefetchOwner();
+  }
+  catch(e){
+    const m = String(e.message||e);
+    if (m.includes('PIN')) { store.del('xym_pin'); showLogin(T('again')); }
+    else $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(m)}</p><button class="btn save" style="width:100%" onclick="load()">${T('retry')}</button></div>`;
+  }
+}
+
+// ---------- Count list ----------
+function render(){
+  const u = DATA.user, owner = u.role === 'Owner';
+  const groups = [...new Set(DATA.items.map(i => i.group))];
+  $('#app').innerHTML = `
+    <header><h1>${T('title')}</h1>
+      <button class="lang" onclick="switchLang()">${T('other')}</button>
+      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(DATA.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>
+    ${owner ? tabsHtml() : ''}
+    <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
+    ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
+    <div id="body"></div><div class="spacer"></div>
+    <footer><div class="prog" id="prog"></div>
+      <button class="btn clear" onclick="openConfirm()">${T('clear')}</button>
+      <button class="btn save" id="save" onclick="save()" disabled>${T('save')}</button></footer>`;
+  $('#q').addEventListener('input', e => { FILTER = e.target.value; drawList(); });
+  document.querySelectorAll('.chip').forEach(b => b.onclick = () => { GROUP = b.dataset.g; render(); });
+  drawList();
+}
+
+function drawList(){
+  const f = FILTER.toLowerCase();
+  const items = DATA.items.filter(i => (GROUP==='All' || i.group===GROUP) &&
+    (!f || (i.name+' '+i.zh+' '+i.id+' '+i.hint+' '+i.hintZh).toLowerCase().includes(f)))
+    .sort((a, b) => itemName(a).localeCompare(itemName(b), LANG==='zh' ? 'zh-Hans-CN-u-co-pinyin' : 'en', {sensitivity:'base'}));   /* A–Z (Chinese: by pinyin) */
+  const by = {}; items.forEach(i => (by[i.group] = by[i.group] || []).push(i));
+  $('#body').innerHTML = Object.keys(by).map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">` +
+    by[g].map(i => {
+      const val = (i.row in EDITS) ? EDITS[i.row] : (i.qty===''?'':i.qty);
+      const sub = itemSub(i), hint = itemHint(i);
+      return `<div class="row ${i.counted?'done':'todo'}">
+        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
+          ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.last!=='' && !i.counted ? ' · '+T('last')+': '+esc(i.last) : ''}</div></div>
+        <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="–">
+      </div>`; }).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
+  document.querySelectorAll('.qty').forEach(inp => inp.addEventListener('input', e => {
+    const row = Number(e.target.dataset.row), it = DATA.items.find(x => x.row===row);
+    const v = e.target.value.trim();
+    if (v === String(it.qty===''?'':it.qty)) delete EDITS[row]; else EDITS[row] = v;
+    e.target.classList.toggle('changed', row in EDITS); updateFooter();
+  }));
+  updateFooter();
+}
+
+function updateFooter(){
+  const n = Object.keys(EDITS).length;
+  const done = DATA.items.filter(i => i.counted).length;
+  $('#prog').textContent = T('prog', done, DATA.items.length) + (n ? T('unsaved', n) : '');
+  $('#save').disabled = n === 0; $('#save').textContent = n ? T('saveN', n) : T('save');
+}
+
+async function save(){
+  const changes = Object.keys(EDITS).map(r => { const it = DATA.items.find(x => x.row===Number(r)); return { row:it.row, id:it.id, qty:EDITS[r] }; });
+  const bad = changes.find(c => c.qty !== '' && isNaN(Number(c.qty)));
+  if (bad) { toast(T('numbers')); return; }
+  changes.forEach(c => { const it = DATA.items.find(x => x.row===c.row);
+    it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.last = ''; });
+  EDITS = {}; drawList();
+  toast(T('saved', changes.length));
+  const pend = JSON.parse(store.get('xym_pending')||'[]').concat(changes);
+  store.set('xym_pending', JSON.stringify(pend));
+  flush();
+}
+
+// Background sender: keeps unsent counts on the phone and retries until the server has them
+let FLUSHING = false;
+async function flush(tries){
+  tries = tries||0;
+  if (FLUSHING) return; FLUSHING = true;
+  const pend = JSON.parse(store.get('xym_pending')||'[]');
+  if (!pend.length){ FLUSHING=false; return; }
+  const last = {}; pend.forEach(c => last[c.row] = c);
+  try { await call('saveDaily', PIN, Object.values(last)); store.del('xym_pending'); FLUSHING=false; setSync(''); }
+  catch(e){
+    FLUSHING=false;
+    if (String(e.message||e).includes('reload')) { store.del('xym_pending'); toast(T('listChanged')); load(); return; }
+    setSync(T('notSent'));
+    setTimeout(() => flush(tries+1), Math.min(30000, 3000*(tries+1)));
+  }
+}
+function setSync(t){ const el=$('#prog'); if(el && t) el.textContent = t; else if (DATA && $('#prog')) updateFooter(); }
+
+// ---------- Photo ----------
+const PHOTOS = {};
+async function showPhoto(row){
+  const it = DATA.items.find(x => x.row===row);
+  $('#pTitle').textContent = itemName(it) + (itemSub(it) ? ' ' + itemSub(it) : '');
+  $('#pBody').textContent = T('loadingPhoto');
+  $('#photo').classList.add('show');
+  try {
+    const url = PHOTOS[row] || (PHOTOS[row] = await call('getPhoto', PIN, row, it.id));
+    if (!$('#photo').classList.contains('show')) return;
+    $('#pBody').innerHTML = url ? `<img src="${url}" alt="">` : T('noPhoto');
+  } catch(e){ $('#pBody').textContent = T('photoFail'); }
+}
+function closePhoto(){ $('#photo').classList.remove('show'); }
+
+// ---------- Clear ----------
+function openConfirm(){
+  const owner = DATA.user.role === 'Owner', a = areaName(DATA.user.area);
+  $('#cTitle').textContent = owner ? T('clearAllT') : T('clearT', a);
+  $('#cText').textContent = owner ? T('clearAllX') : T('clearX', a);
+  $('#confirm').classList.add('show');
+}
+function closeConfirm(){ $('#confirm').classList.remove('show'); }
+async function doClear(){
+  closeConfirm(); store.del('xym_pending');
+  const n = DATA.items.filter(i => i.counted || i.qty!=='').length;
+  DATA.items.forEach(i => { if (i.counted) i.last = i.qty; i.qty=''; i.counted=false; });
+  EDITS = {}; drawList(); toast(T('cleared', n));
+  const send = async (k) => { try { await call('clearDaily', PIN); setSync(''); }
+    catch(e){ setSync(T('clearNotSent')); if (k<5) setTimeout(()=>send(k+1), 3000*(k+1)); else toast(T('clearFail')); } };
+  send(0);
+}
+
+// ================= Month-End Count =================
+function tabsHtml(){
+  return `<div class="tabs"><button class="tab ${MODE==='daily'?'on':''}" onclick="setMode('daily')">${T('daily')}</button>
+    <button class="tab ${MODE==='month'?'on':''}" onclick="setMode('month')">${T('month')}</button>
+    <button class="tab ${MODE==='order'?'on':''}" onclick="setMode('order')">${T('order')}</button></div>`;
+}
+function setMode(m){ MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else load(); }
+const LOC_ORDER = ['BAR1','STR1','KTC1','STR2','FD1','OUT1','OTH1','TLT1','HST1','JJ1'];
+function locName(i){ return LANG==='zh' && i.locZh ? i.locZh : i.locName; }
+
+async function loadME(){
+  MODE = 'month';
+  if (MD && !Object.keys(MEDITS).length && (store.get('xym_me_pending')||'[]') === '[]') {
+    renderME();
+    try { const d = await call('getMonthEnd', PIN); if (MODE==='month' && !Object.keys(MEDITS).length) { MD = d; renderME(); } } catch(e){}
+    return;
+  }
+  $('#app').innerHTML = `<div class="empty">${T('loading')}</div>`;
+  try {
+    if ((store.get('xym_me_pending')||'[]') !== '[]') await flushME();
+    MD = await call('getMonthEnd', PIN); MEDITS = {};
+    JSON.parse(store.get('xym_me_pending')||'[]').forEach(c => {
+      const it = MD.items.find(x => x.row===c.row); if (!it) return;
+      it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.last=''; });
+    renderME();
+  } catch(e){
+    const m = String(e.message||e);
+    if (m.includes('PIN')) { store.del('xym_pin'); showLogin(T('again')); }
+    else $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(m)}</p><button class="btn save" style="width:100%" onclick="loadME()">${T('retry')}</button></div>`;
+  }
+}
+
+function renderME(){
+  const u = MD.user, owner = u.role === 'Owner', me = MD.me;
+  const locs = [...new Set(MD.items.map(i => i.loc))].sort((a,b) => LOC_ORDER.indexOf(a) - LOC_ORDER.indexOf(b));
+  if (MLOC !== 'All' && !locs.includes(MLOC)) MLOC = 'All';
+  const banner = !me.active
+    ? `<div class="banner">${T('meOff')}${me.next?' '+T('meNext', me.next):''}<br><span class="sub">${T('meAuto')}</span>
+         ${owner?`<button class="btn save" onclick="startME()">${T('start')}</button>`:''}</div>`
+    : (owner ? `<div class="banner">${T('meOn', me.session)}</div>` : '');
+  $('#app').innerHTML = `
+    <header><h1>${T('meTitle')}</h1>
+      <button class="lang" onclick="switchLang()">${T('other')}</button>
+      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(me.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>
+    ${owner ? tabsHtml() : ''}${banner}
+    <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
+    ${locs.length > 1 ? `<div class="chips">${['All',...locs].map(g=>{ const s = MD.items.find(i=>i.loc===g);
+        return `<button class="chip ${g===MLOC?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):locName(s))}</button>`; }).join('')}</div>` : ''}
+    <div id="body"></div><div class="spacer"></div>
+    <footer><div class="prog" id="prog"></div>
+      ${owner ? `<button class="btn clear" onclick="openSum()">${T('summary')}</button>` : ''}
+      <button class="btn save" id="save" onclick="saveME()" disabled>${T('save')}</button></footer>`;
+  $('#q').addEventListener('input', e => { FILTER = e.target.value; drawME(); });
+  document.querySelectorAll('.chip').forEach(b => b.onclick = () => { MLOC = b.dataset.g; renderME(); });
+  drawME();
+}
+
+function drawME(){
+  const f = FILTER.toLowerCase(), on = MD.me.active;
+  const coll = LANG==='zh' ? 'zh-Hans-CN-u-co-pinyin' : 'en';
+  const items = MD.items.filter(i => (MLOC==='All' || i.loc===MLOC) &&
+    (!f || (i.name+' '+i.zh+' '+i.id+' '+i.hint+' '+i.hintZh).toLowerCase().includes(f)))
+    .sort((a, b) => itemName(a).localeCompare(itemName(b), coll, {sensitivity:'base'}));
+  const order = [...new Set(MD.items.map(i => i.loc))].sort((a,b) => LOC_ORDER.indexOf(a) - LOC_ORDER.indexOf(b));
+  const by = {}; items.forEach(i => (by[i.loc] = by[i.loc] || []).push(i));
+  $('#body').innerHTML = order.filter(l => by[l]).map(l => {
+    const g = by[l], done = g.filter(i => i.counted).length;
+    return `<div class="group">${esc(locName(g[0]))} · ${l} · ${done}/${g.length}</div><div class="list">` +
+    g.map(i => {
+      const val = (i.row in MEDITS) ? MEDITS[i.row] : (i.qty===''?'':i.qty);
+      const sub = itemSub(i), hint = itemHint(i);
+      return `<div class="row ${i.counted?'done':'todo'}">
+        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhotoME(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
+          ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.last!=='' && !i.counted ? ' · '+T('last')+': '+esc(i.last) : ''}</div></div>
+        <input class="qty ${(i.row in MEDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="–" ${on?'':'disabled'}>
+      </div>`; }).join('') + '</div>'; }).join('') || `<div class="empty">${T('noItems')}</div>`;
+  document.querySelectorAll('.qty').forEach(inp => inp.addEventListener('input', e => {
+    const row = Number(e.target.dataset.row), it = MD.items.find(x => x.row===row);
+    const v = e.target.value.trim();
+    if (v === String(it.qty===''?'':it.qty)) delete MEDITS[row]; else MEDITS[row] = v;
+    e.target.classList.toggle('changed', row in MEDITS); footME();
+  }));
+  footME();
+}
+function footME(){
+  const n = Object.keys(MEDITS).length, done = MD.items.filter(i => i.counted).length;
+  $('#prog').textContent = T('meProg', done, MD.items.length) + (n ? T('unsaved', n) : '');
+  $('#save').disabled = n === 0; $('#save').textContent = n ? T('saveN', n) : T('save');
+}
+function saveME(){
+  const changes = Object.keys(MEDITS).map(r => { const it = MD.items.find(x => x.row===Number(r)); return { row:it.row, pid:it.pid, qty:MEDITS[r] }; });
+  if (changes.find(c => c.qty !== '' && isNaN(Number(c.qty)))) { toast(T('numbers')); return; }
+  changes.forEach(c => { const it = MD.items.find(x => x.row===c.row); it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.last=''; });
+  MEDITS = {}; drawME(); toast(T('saved', changes.length));
+  store.set('xym_me_pending', JSON.stringify(JSON.parse(store.get('xym_me_pending')||'[]').concat(changes)));
+  flushME();
+}
+let MFLUSH = false;
+async function flushME(tries){
+  tries = tries||0; if (MFLUSH) return; MFLUSH = true;
+  const pend = JSON.parse(store.get('xym_me_pending')||'[]');
+  if (!pend.length){ MFLUSH=false; return; }
+  const last = {}; pend.forEach(c => last[c.row] = c);
+  try { await call('saveMonthEnd', PIN, Object.values(last)); store.del('xym_me_pending'); MFLUSH=false; if (MD && $('#prog')) footME(); }
+  catch(e){
+    MFLUSH=false; const m = String(e.message||e);
+    if (m.includes('reload') || m.includes('closed')) { store.del('xym_me_pending'); toast(m.includes('closed')?T('meOff'):T('listChanged')); load(); return; }
+    if ($('#prog')) $('#prog').textContent = T('notSent');
+    setTimeout(() => flushME(tries+1), Math.min(30000, 3000*(tries+1)));
+  }
+}
+async function showPhotoME(row){
+  const it = MD.items.find(x => x.row===row);
+  $('#pTitle').textContent = itemName(it) + (itemSub(it) ? ' ' + itemSub(it) : '');
+  $('#pBody').textContent = T('loadingPhoto'); $('#photo').classList.add('show');
+  try { const url = PHOTOS[it.irow] || (PHOTOS[it.irow] = await call('getPhoto', PIN, it.irow, it.id));
+    if ($('#photo').classList.contains('show')) $('#pBody').innerHTML = url ? `<img src="${url}" alt="">` : T('noPhoto');
+  } catch(e){ $('#pBody').textContent = T('photoFail'); }
+}
+
+// ----- Owner: summary, start / close, export -----
+function rm(n){ return 'RM ' + n.toLocaleString('en-MY', {minimumFractionDigits:2, maximumFractionDigits:2}); }
+function openSum(){
+  CLOSE_ARMED = false;
+  const by = {}; let tot = 0;
+  MD.items.slice().sort((a,b) => LOC_ORDER.indexOf(a.loc) - LOC_ORDER.indexOf(b.loc)).forEach(i => { const b = by[i.loc] = by[i.loc] || { name: locName(i), n:0, d:0, v:0 };
+    b.n++; if (i.counted){ b.d++; const v = Number(i.qty) * (i.price||0); b.v += v; tot += v; } });
+  const done = MD.items.filter(i => i.counted).length;
+  $('#sTitle').textContent = T('sumTitle');
+  $('#sText').textContent = T('sumText', done, MD.items.length);
+  $('#sList').innerHTML = Object.keys(by).map(l => `<div class="srow"><span>${esc(by[l].name)} <span class="sub">${l} · ${by[l].d}/${by[l].n}</span></span><b>${rm(by[l].v)}</b></div>`).join('')
+    + `<div class="srow tot"><span>${T('total')}</span><b>${rm(tot)}</b></div>`;
+  $('#sBtns').innerHTML = `<button class="btn save" onclick="exportME()" id="xBtn">${T('exportX')}</button>
+    ${MD.me.active ? `<button class="btn danger" onclick="closeME()">${T('closeME')}</button>` : `<button class="btn ghost" onclick="startME()">${T('start')}</button>`}
+    <button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
+  $('#sum').classList.add('show');
+}
+function closeSum(){ $('#sum').classList.remove('show'); }
+async function startME(){ closeSum(); try { await call('startMonthEnd', PIN); toast(T('started')); loadME(); } catch(e){ toast(String(e.message||e)); } }
+let CLOSE_ARMED = false;
+async function closeME(){
+  if (!CLOSE_ARMED) { CLOSE_ARMED = true; $('#sText').textContent = T('closeConfirm'); const b = document.querySelector('#sBtns .danger'); if (b) b.textContent = T('closeME') + ' ✓'; return; }
+  CLOSE_ARMED = false;
+  closeSum(); try { await call('closeMonthEnd', PIN); toast(T('closedMsg')); loadME(); } catch(e){ toast(String(e.message||e)); } }
+async function exportME(){
+  const b = $('#xBtn'); b.disabled = true; b.textContent = T('making');
+  try { const r = await call('exportMonthEnd', PIN);
+    $('#sBtns').innerHTML = `<a class="btn save" style="text-align:center;text-decoration:none" href="${r.url}" target="_blank">${T('download')} · ${rm(r.total)}</a>
+      <a class="btn ghost" style="text-align:center;text-decoration:none" href="${r.sheet}" target="_blank">${T('openSheet')}</a>
+      <button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
+  } catch(e){ b.disabled = false; b.textContent = T('exportX'); toast(String(e.message||e)); }
+}
+
+applyStatic();
+// ================= Supplier Ordering (owner) =================
+// Owner: load the other tabs in the background so switching tabs is instant
+function prefetchOwner(){
+  call('getOrders', PIN).then(d => { OD = d; }).catch(()=>{});
+  call('getMonthEnd', PIN).then(d => { if (!MD) MD = d; }).catch(()=>{});
+}
+async function loadOrders(){
+  MODE = 'order';
+  if (OD) { renderOrders(); try { const d = await call('getOrders', PIN); if (MODE==='order' && !document.activeElement.classList.contains('qty')) { const op = {}; (OD.suppliers||[]).forEach(s => { if (s.open) op[s.id] = 1; }); d.suppliers.forEach(s => { if (op[s.id]) s.open = true; }); OD = d; renderOrders(); } } catch(e){} return; }
+  $('#app').innerHTML = `<div class="empty">${T('loading')}</div>`;
+  try { OD = await call('getOrders', PIN); renderOrders(); }
+  catch(e){ $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(String(e.message||e))}</p><button class="btn save" style="width:100%" onclick="loadOrders()">${T('retry')}</button></div>`; }
+}
+function orderMsg(s){
+  const parts = s.lines.filter(l => Number(l.qty) > 0).map(l => `${l.qty} ${l.word}`);
+  return [s.prefix, parts.join(' '), s.suffix].filter(Boolean).join(' ');
+}
+function waLink(s){ return 'https:\/\/wa.me/' + s.wa + '?text=' + encodeURIComponent(orderMsg(s)); }
+function renderOrders(){
+  $('#app').innerHTML = `
+    <header><h1>${T('orderTitle')}</h1>
+      <button class="lang" onclick="switchLang()">${T('other')}</button>
+      <div class="who">${esc(areaName('Owner'))} · ${esc(OD.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>
+    ${tabsHtml()}<div id="body"></div><div class="spacer"></div>`;
+  drawOrders();
+}
+function drawOrders(){
+  if (!OD.suppliers.length) { $('#body').innerHTML = `<div class="empty">${T('noSup')}</div>`; return; }
+  // A supplier gets a card only if there is something to order today (or it was already ordered / opened by hand).
+  OD.suppliers.forEach(s => { if (s.active === undefined) s.active = !s.offTomorrow && s.lines.some(l => Number(l.qty) > 0); });
+  const cards = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? card(s, si) : '').join('');
+  const idle = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? '' :
+    `<div class="it" onclick="openSup(${si})"><b>${esc(s.name)}</b> – ${esc(s.offTomorrow ? T('offTmr', s.name, OD.tomorrow.label) : s.belowMin ? T('belowMinShort', s.need, s.minOrder) : T('enough'))} <span class="sub">· ${T('tapOpen')}</span></div>`).join('');
+  $('#body').innerHTML = (cards || `<div class="empty">${T('nothingToday')}</div>`) +
+    (idle ? `<div class="idle"><div style="margin-bottom:4px">${T('idleTitle')}</div>${idle}</div>` : '');
+  document.querySelectorAll('#body .qty').forEach(inp => inp.addEventListener('change', e => {
+    const s = OD.suppliers[e.target.dataset.s], l = s.lines[e.target.dataset.l];
+    const v = e.target.value.trim(); l.qty = v === '' || isNaN(Number(v)) ? 0 : Math.max(0, Math.round(Number(v)));
+    drawOrders();
+  }));
+}
+function openSup(si){ OD.suppliers[si].open = true; drawOrders(); }
+function closeSup(si){ const s = OD.suppliers[si]; s.open = false; s.lines.forEach(l => l.qty = 0); drawOrders(); }
+function card(s, si){
+    const total = s.lines.reduce((a, l) => a + (Number(l.qty) || 0), 0);
+    const head = s.offTomorrow ? `<div class="warn">${esc(T('offTmr', s.name, OD.tomorrow.label))}</div>`
+      : `<div class="cmeta">${esc(T('delivery', OD.tomorrow.label))}${s.beforeOff ? '<br>'+esc(T('beforeOff')) : ''}${s.orderedToday ? '<br><span class="ok">'+T('orderedToday')+'</span>' : ''}</div>`;
+    const rows = s.lines.map((l, li) => `<div class="row">
+        <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
+          <div class="meta">${T('onHand')}: <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(l.uom)} · ${T('par')} ${esc(l.target)}
+            · ${l.countedToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${esc(T('notToday', l.when))}</span>`}</div></div>
+        <input class="qty" inputmode="numeric" data-s="${si}" data-l="${li}" value="${esc(l.qty)}"></div>`).join('');
+    const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
+    const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
+    const manual = s.open && !s.active && !s.orderedToday;
+    return `<div class="card"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:13px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
+      ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
+      <div class="actions"><button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>
+      <a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a></div></div>`;
+}
+function copyMsg(si){
+  const t = orderMsg(OD.suppliers[si]);
+  try { navigator.clipboard.writeText(t).then(() => toast(T('copied')), () => toast(t)); } catch(e){ toast(t); }
+}
+function recordOrder(si){
+  const s = OD.suppliers[si];
+  const lines = s.lines.filter(l => Number(l.qty) > 0).map(l => ({ id:l.id, qty:l.qty }));
+  if (!lines.length || s.offTomorrow) return;
+  call('saveOrder', PIN, s.id, lines, orderMsg(s)).then(() => { s.orderedToday = true; toast(T('recorded')); drawOrders(); }).catch(e => toast(String(e.message||e)));
+}
+
+PIN = store.get('xym_pin');
+if (PIN) load(); else showLogin();
+</script>
+<script>
+if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+</body>
+</html>
