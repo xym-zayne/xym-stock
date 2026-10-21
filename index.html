@@ -3,7 +3,7 @@
 <head>
 <base target="_top">
 <meta charset="utf-8">
-<meta name="color-scheme" content="light only">
+<meta name="color-scheme" content="only light">
 <title>XYM Inventory</title>
 <link rel="manifest" href="manifest.webmanifest">
 <meta name="theme-color" content="#b5462f">
@@ -15,9 +15,10 @@
 
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
 <style>
-  :root { color-scheme:light only; --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#7a776f; --line:#e7e4dd;
+  :root { color-scheme:only light; --bg:#f6f5f2; --card:#fff; --ink:#1d1d1b; --muted:#7a776f; --line:#e7e4dd;
           --red:#c8372d; --green:#2f7d4f; --brand:#b5462f; --brand-ink:#fff; }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html { background:#f6f5f2; }
   body { margin:0; background:var(--bg); color:var(--ink);
          font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; }
   header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line);
@@ -369,7 +370,15 @@ function tabsHtml(){
     <button class="tab ${MODE==='month'?'on':''}" onclick="setMode('month')">${T('month')}</button>
     <button class="tab ${MODE==='order'?'on':''}" onclick="setMode('order')">${T('order')}</button></div>`;
 }
-function setMode(m){ MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else load(); }
+function setMode(m){ MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else showDaily(); }
+// Daily tab: show what we already have straight away, refresh quietly behind it
+async function showDaily(){
+  if (!DATA) return load();
+  MODE = 'daily'; render();
+  if (Object.keys(EDITS).length || (store.get('xym_pending')||'[]') !== '[]') return;
+  try { const d = await call('getDaily', PIN);
+    if (MODE==='daily' && !Object.keys(EDITS).length && !document.activeElement.classList.contains('qty')) { DATA = d; render(); } } catch(e){}
+}
 const LOC_ORDER = ['BAR1','STR1','KTC1','STR2','FD1','OUT1','OTH1','TLT1','HST1','JJ1'];
 function locName(i){ return LANG==='zh' && i.locZh ? i.locZh : i.locName; }
 
