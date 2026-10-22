@@ -147,6 +147,9 @@
 <script>
 let PIN = null, DATA = null, FILTER = '', GROUP = 'All', EDITS = {};
 let MODE = 'daily', MODE_SET = '', MD = null, MLOC = 'All', MEDITS = {}, OD = null, USER = null;
+// Last data seen on this phone → tabs open instantly, then refresh quietly in the background
+function remember(k, d){ try { if (d) localStorage.setItem('xym_snap_' + k + '_' + PIN, JSON.stringify(d)); } catch(e){} return d; }
+function recall(k){ try { const j = localStorage.getItem('xym_snap_' + k + '_' + PIN); return j ? JSON.parse(j) : null; } catch(e){ return null; } }
 function hhmm(){ const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
 const $ = s => document.querySelector(s);
 const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
@@ -413,7 +416,7 @@ async function refreshME(){
   try { const d = await call('getMonthEnd', PIN);
     if (MODE!=='month' || Object.keys(MEDITS).length || busy()) return;
     const changed = JSON.stringify(d.items) !== JSON.stringify(MD.items) || JSON.stringify(d.me) !== JSON.stringify(MD.me);
-    MD = d; if (changed) redraw(renderME);
+    MD = remember('me', d); if (changed) redraw(renderME);
   } catch(e){}
 }
 async function refreshOrders(){
@@ -423,7 +426,7 @@ async function refreshOrders(){
     const key = x => JSON.stringify(x.suppliers.map(s => [s.id, s.orderedToday, s.lines.map(l => [l.id, l.onHand, l.when, l.qty])]));
     if (key(d) === key(OD)) return;
     const op = {}; OD.suppliers.forEach(s => { if (s.open) op[s.id] = 1; }); d.suppliers.forEach(s => { if (op[s.id]) s.open = true; });
-    OD = d; redraw(renderOrders);
+    OD = remember('order', d); redraw(renderOrders);
   } catch(e){}
 }
 // Check for other people's changes every minute, and whenever the app is opened again
@@ -435,6 +438,7 @@ function locName(i){ return LANG==='zh' && i.locZh ? i.locZh : i.locName; }
 
 async function loadME(){
   MODE = 'month';
+  if (!MD) MD = recall('me');
   if (MD && !Object.keys(MEDITS).length && (store.get('xym_me_pending')||'[]') === '[]') {
     renderME(); refreshME();
     return;
@@ -442,7 +446,7 @@ async function loadME(){
   $('#app').innerHTML = bootHtml();
   try {
     if ((store.get('xym_me_pending')||'[]') !== '[]') await flushME();
-    MD = await call('getMonthEnd', PIN); MEDITS = {};
+    MD = remember('me', await call('getMonthEnd', PIN)); MEDITS = {};
     JSON.parse(store.get('xym_me_pending')||'[]').forEach(c => {
       const it = MD.items.find(x => x.row===c.row); if (!it) return;
       it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.last=''; });
@@ -581,14 +585,16 @@ applyStatic();
 // Owner: load the other tabs in the background so switching tabs is instant
 function prefetchOwner(){
   // one combined call, a moment after the first screen is up (so it never slows the opening)
-  setTimeout(() => call('getOwnerBundle', PIN).then(b => { if (!OD) OD = b.orders; if (!MD) MD = b.me; if (!DV) DV = b.deliv; }).catch(()=>{}), 1500);
+  setTimeout(() => call('getOwnerBundle', PIN).then(b => { remember('order', b.orders); remember('me', b.me); remember('deliv', b.deliv);
+    if (MODE !== 'order') OD = b.orders; if (MODE !== 'month') MD = b.me; if (MODE !== 'deliv') DV = b.deliv; }).catch(()=>{}), 1500);
 }
-function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { if (!DV) DV = d; }).catch(()=>{}), 1500); }
+function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') DV = d; }).catch(()=>{}), 1500); }
 async function loadOrders(){
   MODE = 'order';
+  if (!OD) OD = recall('order');
   if (OD) { renderOrders(); refreshOrders(); return; }
   $('#app').innerHTML = bootHtml();
-  try { OD = await call('getOrders', PIN); renderOrders(); }
+  try { OD = remember('order', await call('getOrders', PIN)); renderOrders(); }
   catch(e){ $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(String(e.message||e))}</p><button class="btn save" style="width:100%" onclick="loadOrders()">${T('retry')}</button></div>`; }
 }
 function orderMsg(s){
@@ -674,9 +680,10 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
   MODE = 'deliv';
+  if (!DV) DV = recall('deliv');
   if (DV) { renderDeliv(); refreshDeliv(); return; }
   $('#app').innerHTML = bootHtml();
-  try { DV = await call('getDeliveries', PIN); USER = DV.user; store.set('xym_role', DV.user.role); renderDeliv(); }
+  try { DV = remember('deliv', await call('getDeliveries', PIN)); USER = DV.user; store.set('xym_role', DV.user.role); renderDeliv(); }
   catch(e){
     const m = String(e.message||e);
     if (m.includes('PIN')) { store.del('xym_pin'); store.del('xym_role'); showLogin(T('again')); return; }
@@ -688,10 +695,10 @@ async function refreshDeliv(){
   try { const d = await call('getDeliveries', PIN);
     if (MODE!=='deliv' || DVIEW || busy()) return;
     const changed = JSON.stringify(d.list) !== JSON.stringify(DV.list);
-    DV = d; if (changed) redraw(renderDeliv);
+    DV = remember('deliv', d); if (changed) redraw(renderDeliv);
   } catch(e){}
 }
-async function reloadDeliv(){ try { DV = await call('getDeliveries', PIN); } catch(e){} DVIEW = null; renderDeliv(); }
+async function reloadDeliv(){ try { DV = remember('deliv', await call('getDeliveries', PIN)); } catch(e){} DVIEW = null; renderDeliv(); }
 const isOwnerD = () => DV.side === 'OWNER';
 function senderOf(o){ return o.dir === 'JB' ? 'JJ' : 'BSD'; }
 function receiverOf(o){ return o.dir === 'JB' ? 'BSD' : 'JJ'; }
