@@ -194,7 +194,7 @@ const TXT = {
         order:'Order', orderTitle:'Supplier Order', delivery:d=>`For delivery tomorrow (${d})`, offTmr:(n,d)=>`${n} is off tomorrow (${d}) – no order today`,
         beforeOff:'Day before their off day – stock up to the higher par', onHand:'on hand', par:'par', notToday:d=>`⚠ not counted today${d?' (last '+d+')':''}`,
         countedToday:'counted today', underMin:(t,m)=>`⚠ Total ${t} – under minimum order ${m}, supplier may not deliver`,
-        sendWa:'Send on WhatsApp', copy:'Copy message', copied:'Copied', orderedToday:'✓ Ordered today', recorded:'Order recorded', noOrder:'Nothing to order', belowMinShort:(n,m)=>`only ${n} needed, under minimum ${m}`, idleTitle:'No order needed today', enough:'stock enough', nothingToday:'Nothing to order today ✓', tapOpen:'tap to order by hand', closeCard:'close', belowMin:(n,m)=>`No order today – only ${n} needed, under minimum ${m}`, noSup:'No supplier items set up yet' },
+        sendWa:'Send on WhatsApp', copy:'Copy message', copied:'Copied', orderedToday:'✓ Ordered today', markOrdered:'Mark as ordered', noWa:'No WhatsApp for this supplier – tell them the list above (in person / by phone), then tap Mark as ordered.', recorded:'Order recorded', noOrder:'Nothing to order', belowMinShort:(n,m)=>`only ${n} needed, under minimum ${m}`, idleTitle:'No order needed today', enough:'stock enough', nothingToday:'Nothing to order today ✓', tapOpen:'tap to order by hand', closeCard:'close', belowMin:(n,m)=>`No order today – only ${n} needed, under minimum ${m}`, noSup:'No supplier items set up yet' },
   zh: { title:'每日盘点', logout:'登出', search:'搜索货品…', pin:'请输入密码', login:'登录', checking:'检查中…',
         wrongPin:'密码错误', again:'请重新登录', loading:'加载中…', noItems:'没有货品', all:'全部',
         prog:(d,n)=>`今日已点 ${d}/${n}`, unsaved:n=>` · ${n} 项未保存`, clear:'清除', save:'保存', saveN:n=>`保存 (${n})`,
@@ -216,7 +216,7 @@ const TXT = {
         order:'订货', orderTitle:'供应商订货', delivery:d=>`明天送货（${d}）`, offTmr:(n,d)=>`${n} 明天休息（${d}）– 今天不用订`,
         beforeOff:'明天之后是休息日 – 订到较高的库存量', onHand:'现有', par:'标准量', notToday:d=>`⚠ 今天还没点${d?'（上次 '+d+'）':''}`,
         countedToday:'今天已点', underMin:(t,m)=>`⚠ 总数 ${t} – 少于最低订量 ${m}，供应商可能不送`,
-        sendWa:'用 WhatsApp 发送', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
+        sendWa:'用 WhatsApp 发送', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', markOrdered:'标记为已订', noWa:'这个供应商没有 WhatsApp – 当面或打电话告诉他上面的清单，然后点「标记为已订」。', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
 };
 const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江' };
 function T(k, ...a){ const v = TXT[LANG][k]; return typeof v === 'function' ? v(...a) : v; }
@@ -660,7 +660,9 @@ function card(s, si){
     return `<div class="card"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:13px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
       ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
       <div class="actions"><button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>
-      <a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a></div></div>`;
+      ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a>`
+             : `<button class="btn save" onclick="recordOrder(${si})" ${(s.offTomorrow || total === 0 || (s.minOrder && total < s.minOrder)) ? 'disabled' : ''}>${T('markOrdered')}</button>`}</div>
+      ${s.wa ? '' : `<div class="cmeta">${T('noWa')}</div>`}</div>`;
 }
 function copyMsg(si){
   const t = orderMsg(OD.suppliers[si]);
