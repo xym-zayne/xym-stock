@@ -352,13 +352,28 @@ function setSync(t){ const el=$('#prog'); if(el && t) el.textContent = t; else i
 
 // ---------- Photo ----------
 const PHOTOS = {};
+// Photos are kept on the phone (made smaller first) → open instantly next time, even after logging in again
+function photoGet(id){ if (PHOTOS[id]) return PHOTOS[id]; try { return localStorage.getItem('xym_ph_' + id); } catch(e){ return null; } }
+function photoKeep(id, url){
+  PHOTOS[id] = url; if (!url) return;
+  const img = new Image();
+  img.onload = () => { try {
+    const k = Math.min(1, 800 / Math.max(img.width, img.height)), c = document.createElement('canvas');
+    c.width = Math.round(img.width * k); c.height = Math.round(img.height * k);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const small = c.toDataURL('image/jpeg', 0.72); PHOTOS[id] = small;
+    try { localStorage.setItem('xym_ph_' + id, small); } catch(e){}
+  } catch(e){} };
+  img.src = url;
+}
+async function photoLoad(row, id){ const hit = photoGet(id); if (hit) return hit; const url = await call('getPhoto', PIN, row, id); photoKeep(id, url); return url; }
 async function showPhoto(row){
   const it = DATA.items.find(x => x.row===row);
   $('#pTitle').textContent = itemName(it) + (itemSub(it) ? ' ' + itemSub(it) : '');
   $('#pBody').textContent = T('loadingPhoto');
   $('#photo').classList.add('show');
   try {
-    const url = PHOTOS[row] || (PHOTOS[row] = await call('getPhoto', PIN, row, it.id));
+    const url = await photoLoad(row, it.id);
     if (!$('#photo').classList.contains('show')) return;
     $('#pBody').innerHTML = url ? `<img src="${url}" alt="">` : T('noPhoto');
   } catch(e){ $('#pBody').textContent = T('photoFail'); }
@@ -545,7 +560,7 @@ async function showPhotoME(row){
   const it = MD.items.find(x => x.row===row);
   $('#pTitle').textContent = itemName(it) + (itemSub(it) ? ' ' + itemSub(it) : '');
   $('#pBody').textContent = T('loadingPhoto'); $('#photo').classList.add('show');
-  try { const url = PHOTOS[it.irow] || (PHOTOS[it.irow] = await call('getPhoto', PIN, it.irow, it.id));
+  try { const url = await photoLoad(it.irow, it.id);
     if ($('#photo').classList.contains('show')) $('#pBody').innerHTML = url ? `<img src="${url}" alt="">` : T('noPhoto');
   } catch(e){ $('#pBody').textContent = T('photoFail'); }
 }
