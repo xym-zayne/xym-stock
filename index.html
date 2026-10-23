@@ -659,7 +659,7 @@ function card(s, si){
     const manual = s.open && !s.active && !s.orderedToday;
     return `<div class="card"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:13px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
       ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
-      <div class="actions"><button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>
+      <div class="actions">${s.wa ? `<button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>` : ''}
       ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a>`
              : `<button class="btn save" onclick="recordOrder(${si})" ${(s.offTomorrow || total === 0 || (s.minOrder && total < s.minOrder)) ? 'disabled' : ''}>${T('markOrdered')}</button>`}</div>
       ${s.wa ? '' : `<div class="cmeta">${T('noWa')}</div>`}</div>`;
@@ -685,7 +685,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove' });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', minRule:(m,q,u)=>`below ${m} → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove' });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -695,7 +695,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除' });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', minRule:(m,q,u)=>`少于 ${m} → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除' });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -724,7 +724,7 @@ function senderOf(o){ return o.dir === 'JB' ? 'JJ' : 'BSD'; }
 function receiverOf(o){ return o.dir === 'JB' ? 'BSD' : 'JJ'; }
 function canSend(o){ return o.status === 'Requested' && (isOwnerD() || DV.side === senderOf(o)); }
 function canRecv(o){ return o.status === 'Sent' && (isOwnerD() || DV.side === receiverOf(o)); }
-function canCancel(o){ return o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o)); }
+function canCancel(o){ return (o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o))) || (o.status === 'Sent' && isOwnerD()); }
 function stName(s){ return T('s' + s) || s; }
 function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.name) + ((zh ? l.name : l.zh) ? ` <span class="sub">${esc(zh ? (l.zh ? l.name : '') : l.zh)}</span>` : ''); }
 function dHeader(title){
@@ -765,7 +765,12 @@ function newDO(mode){
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
-function needOf(i){ return i.par !== '' && i.par !== undefined && i.onHand !== '' && i.onHand !== undefined ? Math.max(0, i.par - i.onHand) : ''; }
+// Reorder rule (Min + ReorderQty): below min → order the fixed amount (e.g. Cili Padi below 0.5 pack → 1 pack). Else par − on hand.
+function needOf(i){
+  const has = i.onHand !== '' && i.onHand !== undefined;
+  if (i.rq && i.min !== '' && i.min !== undefined) return has ? (i.onHand < i.min ? i.rq : 0) : '';
+  return i.par !== '' && i.par !== undefined && has ? Math.max(0, i.par - i.onHand) : '';
+}
 function newLine(i, fill){
   const need = needOf(i), q = fill && i.same && need !== '' && need > 0 ? Math.ceil(need) : '';
   return { id:i.id, name:i.name, zh:i.zh, unit:i.unit, wt:i.wt, qty:q, kg:'', info:i };
@@ -774,7 +779,8 @@ function stockInfo(i){
   if (!i || DVIEW.mode !== 'order') return '';
   const cu = (i.cu || '').toLowerCase(), parts = [];
   parts.push(i.onHand === '' || i.onHand === undefined ? `<span style="color:var(--red)">${T('notCounted')}</span>` : `${T('onHand')} ${esc(i.onHand)} ${esc(cu)}${i.at ? ' ('+esc(i.at)+')' : ''}`);
-  if (i.par !== '' && i.par !== undefined) parts.push(`${T('par')} ${esc(i.par)}`);
+  if (i.rq && i.min !== '' && i.min !== undefined) parts.push(`${T('minRule', i.min, i.rq, cu)}`);
+  else if (i.par !== '' && i.par !== undefined) parts.push(`${T('par')} ${esc(i.par)}`);
   const need = needOf(i);
   if (need !== '') parts.push(need > 0 ? `<b>${T('need')} ${+need.toFixed(2)} ${esc(cu)}</b>` : `<span class="ok">${T('enough')} ✓</span>`);
   return parts.join(' · ');
