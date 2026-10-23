@@ -127,6 +127,7 @@
   .dec { font-size:12.5px; color:var(--muted); text-decoration:none; display:inline-block; margin-top:3px; }
   .dec.on { color:var(--brand); font-weight:600; }
   .decbox { display:inline-block; width:66px; text-align:center; font-size:13px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
+  .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
   .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
 </style>
 </head>
@@ -403,11 +404,11 @@ function curUser(){ return USER || (DATA && DATA.user) || (MD && MD.user) || (DV
 function canDeliv(){ const u = curUser(); return u.role === 'Owner' || u.role === 'Jinjang' || u.area === 'Kitchen'; }
 function tabsHtml(){
   const u = curUser(), b = (m, t) => `<button class="tab ${MODE===m?'on':''}" onclick="setMode('${m}')">${t}</button>`;
-  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv'))}</div>`;
+  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}</div>`;
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
     const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active);
     const cm = meOn ? 'month' : 'daily';
-    return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv'))}</div>`;
+    return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv') + delivBadge())}</div>`;
   }
   return '';
 }
@@ -448,7 +449,7 @@ async function refreshOrders(){
   } catch(e){}
 }
 // Check for other people's changes every minute, and whenever the app is opened again
-function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); }
+function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); badgeRefresh(); }
 setInterval(quietRefresh, 60000);
 document.addEventListener('visibilitychange', () => { if (!document.hidden) quietRefresh(); });
 const LOC_ORDER = ['BAR1','STR1','KTC1','STR2','FD1','OUT1','OTH1','TLT1','HST1','JJ1'];
@@ -604,9 +605,14 @@ applyStatic();
 function prefetchOwner(){
   // one combined call, a moment after the first screen is up (so it never slows the opening)
   setTimeout(() => call('getOwnerBundle', PIN).then(b => { remember('order', b.orders); remember('me', b.me); remember('deliv', b.deliv);
-    if (MODE !== 'order') OD = b.orders; if (MODE !== 'month') MD = b.me; if (MODE !== 'deliv') DV = b.deliv; }).catch(()=>{}), 1500);
+    if (MODE !== 'order') OD = b.orders; if (MODE !== 'month') MD = b.me; if (MODE !== 'deliv') DV = b.deliv; showBadge(); }).catch(()=>{}), 1500);
 }
-function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') DV = d; }).catch(()=>{}), 1500); }
+function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') DV = d; showBadge(); }).catch(()=>{}), 1500); }
+// keep the red count on the Deliveries tab up to date while on other tabs
+function showBadge(){ const t = [...document.querySelectorAll('.tab')].find(x => (x.getAttribute('onclick')||'').includes("'deliv'")); if (t) t.innerHTML = T('deliv') + delivBadge(); }
+let BADGE_TICK = 0;
+function badgeRefresh(){ if (MODE === 'deliv' || !canDeliv() || curUser().role === 'Jinjang' || (++BADGE_TICK % 2)) return;
+  call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') { DV = d; showBadge(); } }).catch(()=>{}); }
 async function loadOrders(){
   MODE = 'order';
   if (!OD) OD = recall('order');
@@ -685,7 +691,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', minRule:(m,q,u)=>`below ${m} → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove' });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`below ${m} → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove' });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -695,7 +701,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', minRule:(m,q,u)=>`少于 ${m} → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除' });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`少于 ${m} → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除' });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -808,7 +814,8 @@ async function submitNew(){
   if (!send.length) { toast(T('addSome')); return; }
   if (DVIEW.mode === 'send') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
   const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
-  try { const id = await call('createDelivery', PIN, DVIEW.mode, send, DNOTE.trim()); toast(T('createdOk', id)); await reloadDeliv(); }
+  try { const mode = DVIEW.mode, id = await call('createDelivery', PIN, mode, send, DNOTE.trim()); toast(T('createdOk', id)); await reloadDeliv();
+        offerNotice(id, mode === 'request' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : 'back'); }
   catch(e){ b.disabled = false; renderNew(); toast(String(e.message||e)); }
 }
 // ---------- Item picker (whole list, A–Z, scrolls inside the sheet) ----------
@@ -880,11 +887,35 @@ function doLines(o, recv){
 async function doAct(fn, recv, okMsg){
   const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, recv); if (!lines) return;
   const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
-  try { await call(fn, PIN, o.id, lines); toast(T(okMsg)); await reloadDeliv(); }
+  try { await call(fn, PIN, o.id, lines); toast(T(okMsg)); await reloadDeliv();
+        if (!recv) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'sent'); }
   catch(e){ toast(String(e.message||e)); b.disabled = false; b.textContent = T(recv ? 'markRecv' : 'markSent'); }
 }
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
+// ---------- WhatsApp notice to the other side (language set per receiver in the Notify tab) ----------
+const UNIT_ZH = { box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'盘', carton:'箱', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个' };
+function noticeText(o, kind, lang){
+  const one = (zh) => o.lines.map(l => {
+    const nm = zh ? (l.zh || l.name) : l.name, u = zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit;
+    const q = kind === 'sent' || kind === 'back' ? l.sent : l.req, kg = (kind === 'sent' || kind === 'back') && l.sentKg !== '' ? (zh ? `（${l.sentKg}公斤）` : ` (${l.sentKg} kg)`) : '';
+    if (q === '' || q === undefined) return l.decide ? `${nm}${zh ? '（增江决定数量）' : ' (Jinjang decides)'}` : '';
+    return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).filter(Boolean).join(zh ? '，' : ', ');
+  const zh = `${{ new:'🛒 新订单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}：${one(true)}${o.note ? '\n备注：' + o.note : ''}\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
+  const en = `${{ new:'🛒 New order', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}: ${one(false)}${o.note ? '\nNote: ' + o.note : ''}\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please confirm in the app when sent'}`;
+  return lang === 'en' ? en : lang === 'both' ? zh + '\n\n' + en : zh;
+}
+function offerNotice(id, to, kind){
+  const o = DV && DV.list.find(x => x.id === id); if (!o) return;
+  const cfg = (DV.notify || {})[to] || { wa:'', lang:'zh' }, txt = noticeText(o, kind, cfg.lang);
+  const link = 'https:\/\/wa.me/' + (cfg.wa || '') + '?text=' + encodeURIComponent(txt);
+  $('#sTitle').textContent = T(to === 'JJ' ? 'tellJJ' : 'tellBSD'); $('#sText').textContent = cfg.wa ? '' : T('pickChat');
+  $('#sList').innerHTML = `<div class="msg" style="white-space:pre-wrap;margin:0">${esc(txt)}</div>`;
+  $('#sBtns').innerHTML = `<a class="btn wa" style="text-align:center;text-decoration:none" href="${link}" target="_blank" onclick="closeSum()">${T('sendWa')}</a><button class="btn clear" onclick="closeSum()">${T('skip')}</button>`;
+  $('#sum').classList.add('show');
+}
+// red count on the Deliveries tab = deliveries waiting for me (to send / to receive)
+function delivBadge(){ try { if (!DV) return ''; const n = DV.list.filter(o => canSend(o) || canRecv(o)).length; return n ? ` <span class="badge">${n}</span>` : ''; } catch(e){ return ''; } }
 let CANCEL_ARMED = '';
 async function doCancel(){
   const id = DVIEW.id;
