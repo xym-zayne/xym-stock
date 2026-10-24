@@ -128,6 +128,7 @@
   .dec.on { color:var(--brand); font-weight:600; }
   .decbox { display:inline-block; width:66px; text-align:center; font-size:13px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
   .asbar { position:sticky; top:0; z-index:40; background:#1f5fa8; color:#fff; text-align:center; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .btn.low { background:#f0a030; color:#fff; }
   .use1 { flex:none; min-width:0; padding:8px 12px; margin-right:8px; font-weight:700; }
   .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
   .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
@@ -469,6 +470,7 @@ async function refreshOrders(){
 // Check for other people's changes every minute, and whenever the app is opened again
 function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); else if (MODE==='stock') refreshStock(); badgeRefresh(); }
 setInterval(quietRefresh, 60000);
+setInterval(() => { if (PIN && !document.hidden && MODE === 'deliv') refreshDeliv(); }, 15000);   // Deliveries tab: check every 15 s
 document.addEventListener('visibilitychange', () => { if (!document.hidden) quietRefresh(); });
 const LOC_ORDER = ['BAR1','STR1','KTC1','STR2','FD1','OUT1','OTH1','TLT1','HST1','JJ1'];
 function locName(i){ return LANG==='zh' && i.locZh ? i.locZh : i.locName; }
@@ -629,7 +631,7 @@ function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => 
 // keep the red count on the Deliveries tab up to date while on other tabs
 function showBadge(){ const t = [...document.querySelectorAll('.tab')].find(x => (x.getAttribute('onclick')||'').includes("'deliv'")); if (t) t.innerHTML = T('deliv') + delivBadge(); }
 let BADGE_TICK = 0;
-function badgeRefresh(){ if (MODE === 'deliv' || !canDeliv() || curUser().role === 'Jinjang' || (++BADGE_TICK % 2)) return;
+function badgeRefresh(){ if (MODE === 'deliv' || !canDeliv() || curUser().role === 'Jinjang' || false) return;
   call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') { DV = d; showBadge(); } }).catch(()=>{}); }
 async function loadOrders(){
   MODE = 'order';
@@ -768,7 +770,7 @@ function renderDeliv(){
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
   const body = sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + sec(T('done'), doneL);
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
-    `<div class="dbtns">${btns}${isOwnerD() ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
+    `<div class="dbtns">${btns}${isOwnerD() ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}<button class="btn ghost" style="flex:none;min-width:52px" onclick="toast(T('working'));reloadDeliv()">↻</button></div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
 }
 function doRow(o, hot){
@@ -785,7 +787,7 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
 function newDO(mode){
   DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || (i.rq && needOf(i) > 0)).map(i => newLine(i, true, true)) : [];   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
+  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || i.low || (i.rq && needOf(i) > 0)).map(i => i.low ? Object.assign(newLine(i, false), { qty: i.rq ? String(i.rq) : '' }) : newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -992,9 +994,9 @@ function asBar(){ const o = store.get('xym_owner'), el = $('#asbar'); if (!el) r
   if (o && o !== PIN) { el.textContent = T('viewAs', areaName(store.get('xym_as') || '')); el.hidden = false; } else el.hidden = true; }
 
 // ---------- Stock tab: slow Jinjang items (boxes / bags that last a week+) ----------
-Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', stockHelp:'Count only UNOPENED boxes / bags. Open a new one → tap −1. Every 3–5 days check and type the real number, then Save. Jinjang deliveries are added by themselves.',
+Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', stockHelp:'Opening the LAST one (or almost finished)? Tap “Running low” – it goes on the next Order from Jinjang by itself. Every 3–5 days count the UNOPENED boxes / bags and Save. Jinjang deliveries are added by themselves.', lowBtn:'Running low', lowOn:'✓ Will order', onOrder:'On order', lowOk:n=>`${n} → next Jinjang order`, lowOff:n=>`${n}: mark removed`,
   use1:'−1', usedOk:(n,q,u)=>`${n}: −1 → ${q} ${u} left`, checkedAgo:(d)=>d===0?'checked today':`checked ${d} day${d===1?'':'s'} ago`, neverChecked:'never checked', saveCheck:n=>n?`Save count (${n})`:'Save count', stockSaved:n=>`Saved ${n} ✓`, left:'left', noStock:'No items on the Stock tab yet' });
-Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', stockHelp:'只点还没开的箱 / 包。开新的一箱/一包 → 按 −1。每 3–5 天点一次，填实际数量，再按保存。增江送来的货会自动加上。',
+Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', stockHelp:'开最后一箱/一包（或快用完）→ 按「快没了」，会自动加进下一张增江订单。每 3–5 天点一次还没开的箱 / 包，填实际数量再按保存。增江送来的货会自动加上。', lowBtn:'快没了', lowOn:'✓ 会订', onOrder:'已订货', lowOk:n=>`${n} → 加进下一张增江订单`, lowOff:n=>`${n}：已取消`,
   use1:'−1', usedOk:(n,q,u)=>`${n}：−1 → 剩 ${q} ${u}`, checkedAgo:(d)=>d===0?'今天点过':`${d} 天前点过`, neverChecked:'还没点过', saveCheck:n=>n?`保存数量 (${n})`:'保存数量', stockSaved:n=>`已保存 ${n} 项 ✓`, left:'剩', noStock:'库存页还没有货品' });
 let SK = null, SEDITS = {};
 const uName = u => LANG === 'zh' ? (UNIT_ZH[String(u).toLowerCase()] || u) : u;
@@ -1019,7 +1021,7 @@ function renderStock(){
       i.rq && i.min !== '' ? T('minRule', i.min, i.rq, uName(i.unit)) : ''].filter(Boolean).join(' · ');
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
     return `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div></div>
-      <button class="btn ghost use1" onclick="useOne('${esc(i.id)}')">${T('use1')}</button>
+      <button class="btn ${i.low===1?'low':'ghost'} use1" ${i.low===2?'disabled':''} onclick="togLow('${esc(i.id)}')">${T(i.low===1?'lowOn':i.low===2?'onOrder':'lowBtn')}</button>
       <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`; }).join('');
   $('#app').innerHTML = `<header><h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(who))} · ${esc(SK.today)}<br>${acctBtns()}</div></header>${tabsHtml()}
@@ -1029,6 +1031,13 @@ function renderStock(){
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
     const id = e.target.dataset.id, v = e.target.value.trim(); if (v === '') delete SEDITS[id]; else SEDITS[id] = v;
     e.target.classList.toggle('changed', id in SEDITS); const n = Object.keys(SEDITS).length, b = $('#ssave'); b.disabled = !n; b.textContent = T('saveCheck', n); }));
+}
+async function togLow(id){
+  const i = SK.items.find(x => x.id === id); if (!i || i.low === 2) return;
+  const on = i.low !== 1; i.low = on ? 1 : 0; redraw(renderStock);
+  try { await call('stockLow', PIN, id, on); remember('stock', SK); toast(T(on ? 'lowOk' : 'lowOff', itemName(i)));
+    [DV, recall('deliv')].forEach((d, k) => { const x = d && d.items.find(y => y.id === id); if (x) { x.low = on; if (k) remember('deliv', d); } }); }
+  catch(e){ i.low = on ? 0 : 1; redraw(renderStock); toast(String(e.message||e)); }
 }
 async function useOne(id){
   const i = SK.items.find(x => x.id === id); if (!i) return;
