@@ -128,6 +128,8 @@
   .dec.on { color:var(--brand); font-weight:600; }
   .decbox { display:inline-block; width:66px; text-align:center; font-size:13px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
   .asbar { position:sticky; top:0; z-index:40; background:#1f5fa8; color:#fff; text-align:center; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .lv { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; font-size:14px; border-bottom:1px solid var(--line); }
+  .lv span { white-space:nowrap; }
   .btn.low { background:#f0a030; color:#fff; }
   .use1 { flex:none; min-width:0; padding:8px 12px; margin-right:8px; font-weight:700; }
   .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
@@ -787,7 +789,7 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
 function newDO(mode){
   DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || i.low || (i.rq && needOf(i) > 0)).map(i => i.low ? Object.assign(newLine(i, false), { qty: i.rq ? String(i.rq) : '' }) : newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
+  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || i.low || ((i.rq || i.stock) && needOf(i) > 0)).map(i => i.low ? Object.assign(newLine(i, false), { qty: i.rq ? String(i.rq) : i.par !== '' && i.par !== undefined ? String(Math.max(1, Math.ceil(i.par - (Number(i.onHand) || 0)))) : '' }) : newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -795,6 +797,7 @@ function newDO(mode){
 function needOf(i){
   const has = i.onHand !== '' && i.onHand !== undefined;
   if (i.rq && i.min !== '' && i.min !== undefined) return has ? (i.onHand <= i.min ? i.rq : 0) : '';
+  if (i.stock && i.min !== '' && i.min !== undefined && i.par !== '' && i.par !== undefined) return has ? (i.onHand <= i.min ? Math.max(0, i.par - i.onHand) : 0) : '';   // Stock tab: at or below min → fill up to par
   return i.par !== '' && i.par !== undefined && has ? Math.max(0, i.par - i.onHand) : '';
 }
 function newLine(i, fill, zero){   // zero: start at 0 when the need is unknown (no par yet) so nothing is ordered by accident
@@ -806,6 +809,7 @@ function stockInfo(i){
   const cu = (i.cu || '').toLowerCase(), parts = [];
   parts.push(i.onHand === '' || i.onHand === undefined ? `<span style="color:var(--red)">${T('notCounted')}</span>` : `${T('onHand')} ${esc(i.onHand)} ${esc(cu)}${i.at ? ' ('+esc(i.at)+')' : ''}`);
   if (i.rq && i.min !== '' && i.min !== undefined) parts.push(`${T('minRule', i.min, i.rq, cu)}`);
+  else if (i.stock && i.min !== '' && i.min !== undefined && i.par !== '' && i.par !== undefined) parts.push(T('fillRule', i.min, i.par, cu));
   else if (i.par !== '' && i.par !== undefined) parts.push(`${T('par')} ${esc(i.par)}`);
   const need = needOf(i);
   if (need !== '') parts.push(need > 0 ? `<b>${T('need')} ${+need.toFixed(2)} ${esc(cu)}</b>` : `<span class="ok">${T('enough')} ✓</span>`);
@@ -994,9 +998,9 @@ function asBar(){ const o = store.get('xym_owner'), el = $('#asbar'); if (!el) r
   if (o && o !== PIN) { el.textContent = T('viewAs', areaName(store.get('xym_as') || '')); el.hidden = false; } else el.hidden = true; }
 
 // ---------- Stock tab: slow Jinjang items (boxes / bags that last a week+) ----------
-Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', stockHelp:'Opening the LAST one (or almost finished)? Tap “Running low” – it goes on the next Order from Jinjang by itself. Every 3–5 days count the UNOPENED boxes / bags and Save. Jinjang deliveries are added by themselves.', lowBtn:'Running low', lowOn:'✓ Will order', onOrder:'On order', lowOk:n=>`${n} → next Jinjang order`, lowOff:n=>`${n}: mark removed`,
+Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', stockHelp:'Opening the LAST one (or almost finished)? Tap “Running low” – it goes on the next Order from Jinjang by itself. Every 3–5 days count the UNOPENED boxes / bags and Save. Jinjang deliveries are added by themselves.', fillRule:(m,p,u)=>`${m} or less → fill up to ${p} ${u}`, setLv:'Set levels', lvTitle:n=>`${n} – levels`, lvMin:'Low level (min) – order when stock is this or less', lvPar:'Fill up to (par)', lvSaved:'Levels saved ✓', lowBtn:'Running low', lowOn:'✓ Will order', onOrder:'On order', lowOk:n=>`${n} → next Jinjang order`, lowOff:n=>`${n}: mark removed`,
   use1:'−1', usedOk:(n,q,u)=>`${n}: −1 → ${q} ${u} left`, checkedAgo:(d)=>d===0?'checked today':`checked ${d} day${d===1?'':'s'} ago`, neverChecked:'never checked', saveCheck:n=>n?`Save count (${n})`:'Save count', stockSaved:n=>`Saved ${n} ✓`, left:'left', noStock:'No items on the Stock tab yet' });
-Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', stockHelp:'开最后一箱/一包（或快用完）→ 按「快没了」，会自动加进下一张增江订单。每 3–5 天点一次还没开的箱 / 包，填实际数量再按保存。增江送来的货会自动加上。', lowBtn:'快没了', lowOn:'✓ 会订', onOrder:'已订货', lowOk:n=>`${n} → 加进下一张增江订单`, lowOff:n=>`${n}：已取消`,
+Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', stockHelp:'开最后一箱/一包（或快用完）→ 按「快没了」，会自动加进下一张增江订单。每 3–5 天点一次还没开的箱 / 包，填实际数量再按保存。增江送来的货会自动加上。', fillRule:(m,p,u)=>`剩 ${m} 或更少 → 补到 ${p} ${u}`, setLv:'设定', lvTitle:n=>`${n} – 设定数量`, lvMin:'最低量 (min) – 剩这么多或更少就订', lvPar:'补到 (par)', lvSaved:'已保存 ✓', lowBtn:'快没了', lowOn:'✓ 会订', onOrder:'已订货', lowOk:n=>`${n} → 加进下一张增江订单`, lowOff:n=>`${n}：已取消`,
   use1:'−1', usedOk:(n,q,u)=>`${n}：−1 → 剩 ${q} ${u}`, checkedAgo:(d)=>d===0?'今天点过':`${d} 天前点过`, neverChecked:'还没点过', saveCheck:n=>n?`保存数量 (${n})`:'保存数量', stockSaved:n=>`已保存 ${n} 项 ✓`, left:'剩', noStock:'库存页还没有货品' });
 let SK = null, SEDITS = {};
 const uName = u => LANG === 'zh' ? (UNIT_ZH[String(u).toLowerCase()] || u) : u;
@@ -1018,19 +1022,37 @@ function renderStock(){
     const old = i.days === '' || i.days > 5, unit = esc(uName(i.unit));
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
       i.days === '' ? '' : `<span style="color:${old?'var(--red)':'var(--muted)'}">${T('checkedAgo', i.days)}</span>`,
-      i.rq && i.min !== '' ? T('minRule', i.min, i.rq, uName(i.unit)) : ''].filter(Boolean).join(' · ');
+      i.rq && i.min !== '' ? T('minRule', i.min, i.rq, uName(i.unit)) : i.min !== '' && i.par !== '' ? T('fillRule', i.min, i.par, uName(i.unit)) : i.par !== '' ? `par ${esc(i.par)}` : '',
+      curUser().role === 'Owner' && !store.get('xym_owner') ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
     return `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div></div>
       <button class="btn ${i.low===1?'low':'ghost'} use1" ${i.low===2?'disabled':''} onclick="togLow('${esc(i.id)}')">${T(i.low===1?'lowOn':i.low===2?'onOrder':'lowBtn')}</button>
       <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`; }).join('');
   $('#app').innerHTML = `<header><h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(who))} · ${esc(SK.today)}<br>${acctBtns()}</div></header>${tabsHtml()}
+    <div class="dbtns"><button class="btn save" onclick="goJJOrder()">${T('jjGo')}</button></div>
     <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>
     <div class="list" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
     <footer><div class="prog" id="prog"></div><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
     const id = e.target.dataset.id, v = e.target.value.trim(); if (v === '') delete SEDITS[id]; else SEDITS[id] = v;
     e.target.classList.toggle('changed', id in SEDITS); const n = Object.keys(SEDITS).length, b = $('#ssave'); b.disabled = !n; b.textContent = T('saveCheck', n); }));
+}
+function openLevels(id){
+  const i = SK.items.find(x => x.id === id); if (!i) return; const u = esc(uName(i.unit));
+  $('#sTitle').textContent = T('lvTitle', itemName(i)); $('#sText').textContent = '';
+  $('#sList').innerHTML = `<label class="lv">${T('lvMin')}<span><input id="lvMin" class="qty sm" inputmode="decimal" value="${esc(i.min)}"> ${u}</span></label>
+    <label class="lv">${T('lvPar')}<span><input id="lvPar" class="qty sm" inputmode="decimal" value="${esc(i.par)}"> ${u}</span></label>`;
+  $('#sBtns').innerHTML = `<button class="btn save" onclick="saveLevels('${esc(id)}')">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
+  $('#sum').classList.add('show');
+}
+async function saveLevels(id){
+  const mn = $('#lvMin').value.trim(), pr = $('#lvPar').value.trim();
+  if ((mn && isNaN(Number(mn))) || (pr && isNaN(Number(pr)))) { toast(T('numbers')); return; }
+  try { SK = remember('stock', await call('stockLevels', PIN, id, mn, pr)); closeSum(); redraw(renderStock); toast(T('lvSaved'));
+    const a = { min: mn === '' ? '' : Number(mn), par: pr === '' ? '' : Number(pr), rq: '' };
+    [DV, recall('deliv')].forEach((d, k) => { const x = d && d.items.find(y => y.id === id); if (x) { Object.assign(x, a); if (k) remember('deliv', d); } }); }
+  catch(e){ toast(String(e.message||e)); }
 }
 async function togLow(id){
   const i = SK.items.find(x => x.id === id); if (!i || i.low === 2) return;
