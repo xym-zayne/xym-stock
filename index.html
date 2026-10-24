@@ -127,11 +127,13 @@
   .dec { font-size:12.5px; color:var(--muted); text-decoration:none; display:inline-block; margin-top:3px; }
   .dec.on { color:var(--brand); font-weight:600; }
   .decbox { display:inline-block; width:66px; text-align:center; font-size:13px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
+  .asbar { position:sticky; top:0; z-index:40; background:#1f5fa8; color:#fff; text-align:center; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; }
   .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
   .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
 </style>
 </head>
 <body>
+<div id="asbar" class="asbar" onclick="backOwner()" hidden></div>
 <div id="app"></div>
 <div class="modal" id="confirm"><div class="sheet">
   <h2 id="cTitle">Clear count?</h2><p id="cText"></p>
@@ -243,7 +245,7 @@ async function tryLogin(){
   try { const u = await call('login', p); PIN = p; store.set('xym_pin', p); store.set('xym_role', u && u.role || ''); USER = u; load(); }
   catch(e){ const msg = String(e && e.message || e || ''); $('#err').textContent = msg.includes('PIN') ? T('wrongPin') : T('noConn') + ' – ' + msg; }
 }
-function logout(){ store.del('xym_pin'); store.del('xym_role'); PIN=null; DATA=null; MD=null; OD=null; DV=null; DVIEW=null; USER=null; MODE='daily'; MODE_SET=''; showLogin(); }
+function logout(){ store.del('xym_owner'); store.del('xym_as'); setTimeout(asBar, 0); store.del('xym_pin'); store.del('xym_role'); PIN=null; DATA=null; MD=null; OD=null; DV=null; DVIEW=null; USER=null; MODE='daily'; MODE_SET=''; showLogin(); }
 
 async function load(){
   if (store.get('xym_role') === 'Jinjang') return loadDeliv();
@@ -275,7 +277,7 @@ function render(){
   $('#app').innerHTML = `
     <header><h1>${T('title')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(DATA.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>
+      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(DATA.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
@@ -503,7 +505,7 @@ function renderME(){
   $('#app').innerHTML = `
     <header><h1>${T('meTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(me.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>
+      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(me.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}${banner}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${locs.length > 1 ? `<div class="chips">${['All',...locs].map(g=>{ const s = MD.items.find(i=>i.loc===g);
@@ -645,7 +647,7 @@ function renderOrders(){
   $('#app').innerHTML = `
     <header><h1>${T('orderTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName('Owner'))} · ${esc(OD.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>
+      <div class="who">${esc(areaName('Owner'))} · ${esc(OD.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}<div id="body"></div><div class="spacer"></div>`;
   drawOrders();
 }
@@ -751,7 +753,7 @@ function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.n
 function dHeader(title){
   const u = curUser(), who = u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area);
   return `<header><h1>${title}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
-    <div class="who">${esc(areaName(who))} · ${esc(DV.today)}<br><button onclick="logout()">${T('logout')}</button></div></header>`;
+    <div class="who">${esc(areaName(who))} · ${esc(DV.today)}<br>${acctBtns()}</div></header>`;
 }
 function renderDeliv(){
   if (DVIEW && DVIEW.kind === 'new') return renderNew();
@@ -782,7 +784,7 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
 function newDO(mode){
   DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => i.def || (i.rq && needOf(i) > 0)).map(i => newLine(i, true)) : [];   // + low items with a fixed reorder rule (Garlic, Cili Padi)
+  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || (i.rq && needOf(i) > 0)).map(i => newLine(i, true, true)) : [];   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -792,8 +794,8 @@ function needOf(i){
   if (i.rq && i.min !== '' && i.min !== undefined) return has ? (i.onHand <= i.min ? i.rq : 0) : '';
   return i.par !== '' && i.par !== undefined && has ? Math.max(0, i.par - i.onHand) : '';
 }
-function newLine(i, fill){
-  const need = needOf(i), q = fill && i.same && need !== '' ? (need > 0 ? String(Math.ceil(need)) : '0') : '';
+function newLine(i, fill, zero){   // zero: start at 0 when the need is unknown (no par yet) so nothing is ordered by accident
+  const need = needOf(i), q = fill && i.same && need !== '' ? (need > 0 ? String(Math.ceil(need)) : '0') : (zero ? '0' : '');
   return { id:i.id, name:i.name, zh:i.zh, unit:i.unit, wt:i.wt, qty:q, kg:'', info:i };
 }
 function stockInfo(i){
@@ -961,7 +963,34 @@ async function exportSt(ym){
   } catch(e){ b.disabled = false; b.textContent = T('exportX'); toast(String(e.message||e)); }
 }
 
-PIN = store.get('xym_pin');
+// ---------- Owner: switch to another account without typing its PIN ----------
+Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
+Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
+let ACCTS = null;
+function acctBtns(){
+  const o = store.get('xym_owner');
+  if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
+  return (curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button> · ` : '') + `<button onclick="logout()">${T('logout')}</button>`;
+}
+async function openSwitch(){
+  $('#sTitle').textContent = T('switchT'); $('#sText').textContent = ''; $('#sList').innerHTML = `<div class="empty">${T('working')}</div>`;
+  $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`; $('#sum').classList.add('show');
+  try { ACCTS = ACCTS || await call('getAccounts', PIN);
+    $('#sList').innerHTML = ACCTS.map((a, k) => `<div class="srow pick" onclick="switchTo(${k})"><span>${esc(areaName(a.role === 'Jinjang' ? 'Jinjang' : a.area))}</span><b class="sub">›</b></div>`).join(''); }
+  catch(e){ $('#sList').innerHTML = `<div class="empty">${esc(String(e.message||e))}</div>`; }
+}
+function useAccount(p, role){
+  PIN = p; store.set('xym_pin', p); store.set('xym_role', role || '');
+  DATA = null; MD = null; OD = null; DV = null; DVIEW = null; USER = null; EDITS = {}; FILTER = ''; GROUP = 'All'; MODE = 'daily'; MODE_SET = '';
+  asBar(); window.scrollTo(0, 0); load();
+}
+function switchTo(k){ const a = ACCTS[k]; if (!a) return; closeSum();
+  store.set('xym_owner', PIN); store.set('xym_as', a.role === 'Jinjang' ? 'Jinjang' : a.area); useAccount(a.pin, a.role); }
+function backOwner(){ const o = store.get('xym_owner'); if (!o) return; store.del('xym_owner'); store.del('xym_as'); useAccount(o, 'Owner'); }
+function asBar(){ const o = store.get('xym_owner'), el = $('#asbar'); if (!el) return;
+  if (o && o !== PIN) { el.textContent = T('viewAs', areaName(store.get('xym_as') || '')); el.hidden = false; } else el.hidden = true; }
+
+PIN = store.get('xym_pin'); asBar();
 if (PIN) load(); else showLogin();
 </script>
 <script>
