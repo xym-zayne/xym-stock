@@ -820,8 +820,6 @@ function stockInfo(i){
   if (!i || DVIEW.mode !== 'order') return '';
   const cu = (i.cu || '').toLowerCase(), parts = [];
   parts.push(i.onHand === '' || i.onHand === undefined ? `<span style="color:var(--red)">${T('notCounted')}</span>` : `${T('onHand')} ${esc(i.onHand)} ${esc(cu)}${i.at ? ' ('+esc(i.at)+')' : ''}`);
-  const rt = ruleTxt(i, cu); if (rt) parts.push(rt);
-  else if (i.par !== '' && i.par !== undefined) parts.push(`${T('par')} ${esc(i.par)}`);
   const need = needOf(i);
   if (need !== '') parts.push(need > 0 ? `<b>${T('need')} ${+need.toFixed(2)} ${esc(cu)}</b>` : `<span class="ok">${T('enough')} ✓</span>`);
   return parts.join(' · ');
@@ -1016,7 +1014,7 @@ Object.assign(TXT.zh, { satW:'周六：', setLv:'设定', lvTitle:n=>`${n} – �
   lvNote:'「订」或「补到」选一个填。星期六不填就跟平日一样。', lvSaved:'已保存 ✓', fillRule:(m,p,u)=>`剩 ${m} 或更少 → 补到 ${p} ${u}`,
   removedU:n=>`${n} 已移除`, undo:'复原' });
 const nz = v => v !== '' && v !== undefined && v !== null;
-const lvLink = (i, u) => { const t = ruleTxt(i, u); return ` · ${t ? esc(t) + ' · ' : ''}<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>`; };
+const lvLink = (i, u) => ` · <a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>`;   // level details stay inside "Set levels" (less clutter)
 const isSat = () => new Date().getDay() === 6;
 function lvOf(i){ const L = i.lv || i, sat = isSat() && [L.smin, L.sq, L.spar].some(nz);
   return sat ? { min:L.smin, rq:L.sq, par:L.spar } : { min:L.min, rq:L.rq, par:L.par }; }
@@ -1120,7 +1118,7 @@ function renderStock(){
     const old = i.days === '' || i.days > 5, unit = esc(uName(i.unit)), nd = stockNeed(i);
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
       i.days === '' ? '' : `<span style="color:${old?'var(--red)':'var(--muted)'}">${T('checkedAgo', i.days)}</span>`,
-      nd > 0 ? `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>` : '', ruleTxt(i, uName(i.unit)),
+      nd > 0 ? `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>` : '',
       boss ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
     return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div></div>
