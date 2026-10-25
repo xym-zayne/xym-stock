@@ -1117,7 +1117,7 @@ async function loadStock(){
   catch(e){ $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(String(e.message||e))}</p><button class="btn save" style="width:100%" onclick="loadStock()">${T('retry')}</button></div>`; }
 }
 async function refreshStock(){
-  try { if (SUSE_BUSY || Object.keys(SUSE).length) return; const d = await call('getStock', PIN); if (MODE !== 'stock' || busy() || Object.keys(SEDITS).length || SUSE_BUSY || Object.keys(SUSE).length) return;
+  try { if (SUSE_BUSY || SCOUNT || Object.keys(SUSE).length) return; const d = await call('getStock', PIN); if (SCOUNT) return; if (MODE !== 'stock' || busy() || Object.keys(SEDITS).length || SUSE_BUSY || Object.keys(SUSE).length) return;
     const ch = JSON.stringify(d.items) !== JSON.stringify(SK && SK.items); SK = remember('stock', d); if (ch) redraw(renderStock); } catch(e){}
 }
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
@@ -1193,13 +1193,23 @@ async function stockOrder(){
   MODE_SET = 'deliv'; MODE = 'deliv'; newDO('order');
   pend.then(() => call('getDeliveries', PIN)).then(d => { if (d && d.items) DV = remember('deliv', d); }).catch(() => {});
 }
-async function saveStock(){
+// Save count: shows as saved at once; the server save runs in the background (numbers come back if it fails)
+let SCOUNT = null;
+function saveStock(){
   const list = Object.keys(SEDITS).map(id => ({ id, qty: SEDITS[id] }));
-  if (list.find(x => isNaN(Number(x.qty)))) { toast(T('numbers')); return false; }
-  const b = $('#ssave'); b.disabled = true; b.textContent = T('working');
-  if (SUSE_BUSY || Object.keys(SUSE).length) await flushUse();
-  try { SK = remember('stock', await call('stockCount', PIN, list)); SEDITS = {}; if (MODE === 'stock') redraw(renderStock); toast(T('stockSaved', list.length)); return true; }
-  catch(e){ if (b) b.disabled = false; b.textContent = T('saveCheck', list.length); toast(String(e.message||e)); return false; }
+  if (list.find(x => isNaN(Number(x.qty)))) { toast(T('numbers')); return Promise.resolve(false); }
+  const t = hhmm();
+  list.forEach(x => { const i = SK.items.find(y => y.id === x.id); if (i) { i.qty = Number(x.qty); i.days = 0; i.checked = t; i.at = t; } });
+  SEDITS = {}; remember('stock', SK); if (MODE === 'stock') redraw(renderStock); toast(T('stockSaved', list.length));
+  SCOUNT = (async () => {
+    if (SUSE_BUSY || Object.keys(SUSE).length) await flushUse();   // −1 taps first, then the counted numbers
+    try { const d = await call('stockCount', PIN, list);
+      if (d && d.items && !Object.keys(SEDITS).length && !Object.keys(SUSE).length) { SK = remember('stock', d); if (MODE === 'stock') redraw(renderStock); }
+      return true; }
+    catch(e){ list.forEach(x => { if (!(x.id in SEDITS)) SEDITS[x.id] = x.qty; }); if (MODE === 'stock') redraw(renderStock); toast(String(e.message||e)); return false; }
+    finally { SCOUNT = null; }
+  })();
+  return SCOUNT;
 }
 
 PIN = store.get('xym_pin'); asBar();
