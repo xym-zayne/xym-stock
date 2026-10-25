@@ -481,9 +481,17 @@ async function refreshOrders(){
 }
 // Check for other people's changes every minute, and whenever the app is opened again
 function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); else if (MODE==='stock') refreshStock(); badgeRefresh(); }
-setInterval(quietRefresh, 60000);
+setInterval(quietRefresh, 30000);   // every 30 s while the app is open
 setInterval(() => { if (PIN && !document.hidden && MODE === 'deliv') refreshDeliv(); }, 15000);   // Deliveries tab: check every 15 s
-document.addEventListener('visibilitychange', () => { if (!document.hidden) quietRefresh(); else if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); });
+// Coming back to the app (from the background / another app / phone unlocked) → refresh straight away
+let WAKE_AT = 0;
+function wake(){ if (!PIN || document.hidden || Date.now() - WAKE_AT < 1500) return; WAKE_AT = Date.now(); quietRefresh(); }
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return wake();
+  const a = document.activeElement; if (a && a.classList && a.classList.contains('qty')) a.blur();   // typed numbers are kept; a focused box must not block the refresh later
+  if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse();
+});
+['focus', 'pageshow', 'online'].forEach(ev => window.addEventListener(ev, wake));
 const LOC_ORDER = ['BAR1','STR1','KTC1','STR2','FD1','OUT1','OTH1','TLT1','HST1','JJ1'];
 function locName(i){ return LANG==='zh' && i.locZh ? i.locZh : i.locName; }
 
@@ -748,12 +756,14 @@ async function loadDeliv(){
     $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(m)}</p><button class="btn save" style="width:100%" onclick="loadDeliv()">${T('retry')}</button><p style="margin-top:14px"><button class="lang" onclick="logout()">${T('logout')}</button></p></div>`;
   }
 }
+// also refreshes an open delivery (e.g. waiting for Jinjang to send) as long as nothing has been typed in it
+const doClean = () => DVIEW && DVIEW.kind === 'do' && !Object.keys(DVIEW.q || {}).length && !Object.keys(DVIEW.k || {}).length && !(DVIEW.extra || []).length;
 async function refreshDeliv(){
-  if (!DV || DVIEW) return;
+  if (!DV || (DVIEW && !doClean())) return;
   try { const d = await call('getDeliveries', PIN);
-    if (MODE!=='deliv' || DVIEW || busy()) return;
+    if (MODE!=='deliv' || (DVIEW && !doClean()) || busy()) return;
     const changed = JSON.stringify(d.list) !== JSON.stringify(DV.list);
-    DV = remember('deliv', d); if (changed) redraw(renderDeliv);
+    DV = remember('deliv', d); if (changed) redraw(DVIEW ? renderDO : renderDeliv);
   } catch(e){}
 }
 async function reloadDeliv(){ try { DV = remember('deliv', await call('getDeliveries', PIN)); } catch(e){} DVIEW = null; renderDeliv(); }
