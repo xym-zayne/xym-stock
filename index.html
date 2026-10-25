@@ -128,6 +128,14 @@
   .dec.on { color:var(--brand); font-weight:600; }
   .decbox { display:inline-block; width:66px; text-align:center; font-size:13px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
   .asbar { position:sticky; top:0; z-index:40; background:#1f5fa8; color:#fff; text-align:center; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .swrap { position:relative; background:var(--red); }
+  .swrap + .swrap { border-top:1px solid var(--line); }
+  .swrap > .row { position:relative; z-index:1; background:var(--card); border-top:0; transition:transform .15s; touch-action:pan-y; }
+  .swrap > .row.open { transform:translateX(-76px); }
+  .swrap > .bin { position:absolute; right:0; top:0; bottom:0; width:76px; border:0; background:var(--red); color:#fff; font-size:24px; }
+  .lvh { font-weight:700; margin:12px 0 2px; }
+  .undo { position:fixed; left:12px; right:12px; bottom:86px; z-index:60; display:none; align-items:center; justify-content:space-between; gap:10px; background:#222; color:#fff; padding:10px 14px; border-radius:12px; font-size:14px; }
+  .undo.show { display:flex; } .undo button { background:none; border:0; color:#ffd27a; font-weight:700; font-size:15px; }
   .needbox { margin:10px 14px 0; padding:10px 12px; background:#fff3e0; border:1px solid #f3c98b; border-radius:12px; font-size:14px; line-height:1.5; }
   .lv { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; font-size:14px; border-bottom:1px solid var(--line); }
   .lv span { white-space:nowrap; }
@@ -308,9 +316,10 @@ function drawList(){
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="–">
-      </div>`; }).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
+      </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
+  swipeRows();
   document.querySelectorAll('.qty').forEach(inp => inp.addEventListener('input', e => {
     const row = Number(e.target.dataset.row), it = DATA.items.find(x => x.row===row);
     const v = e.target.value.trim();
@@ -542,7 +551,7 @@ function drawME(){
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhotoME(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.last!=='' && !i.counted ? ' · '+T('last')+': '+esc(i.last) : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.last!=='' && !i.counted ? ' · '+T('last')+': '+esc(i.last) : ''}${i.lv && isBoss() ? lvLink(i, '') : ''}</div></div>
         <input class="qty ${(i.row in MEDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="–" ${on?'':'disabled'}>
       </div>`; }).join('') + '</div>'; }).join('') || `<div class="empty">${T('noItems')}</div>`;
   document.querySelectorAll('.qty').forEach(inp => inp.addEventListener('input', e => {
@@ -790,15 +799,17 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
 function newDO(mode){
   DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => (i.dj || ((i.rq || i.stock) && needOf(i) > 0)) && (!i.stock || (i.sg || 'Jinjang') === 'Jinjang')).map(i => newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
+  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || ((i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0)).map(i => newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
 // Reorder rule (Min + ReorderQty): at or below min → order the fixed amount (e.g. Garlic 0.5 kg → 2 kg, Cili Padi 0.5 pack → 1 pack). Else par − on hand.
 function needOf(i){
   const has = i.onHand !== '' && i.onHand !== undefined;
-  if (i.rq && i.min !== '' && i.min !== undefined) return has ? (i.onHand <= i.min ? i.rq : 0) : '';
-  if (i.stock && i.min !== '' && i.min !== undefined && i.par !== '' && i.par !== undefined) return has ? (i.onHand <= i.min ? Math.max(0, i.par - i.onHand) : 0) : '';   // Stock tab: at or below min → fill up to par
+  return has ? needQty(i.onHand, i, !!i.stock) : '';   // levels: weekday / Saturday, fixed amount or fill up to par
+}
+function needOfOld(i){
+  const has = i.onHand !== '' && i.onHand !== undefined;
   return i.par !== '' && i.par !== undefined && has ? Math.max(0, i.par - i.onHand) : '';
 }
 function newLine(i, fill, zero){   // zero: start at 0 when the need is unknown (no par yet) so nothing is ordered by accident
@@ -809,8 +820,7 @@ function stockInfo(i){
   if (!i || DVIEW.mode !== 'order') return '';
   const cu = (i.cu || '').toLowerCase(), parts = [];
   parts.push(i.onHand === '' || i.onHand === undefined ? `<span style="color:var(--red)">${T('notCounted')}</span>` : `${T('onHand')} ${esc(i.onHand)} ${esc(cu)}${i.at ? ' ('+esc(i.at)+')' : ''}`);
-  if (i.rq && i.min !== '' && i.min !== undefined) parts.push(`${T('minRule', i.min, i.rq, cu)}`);
-  else if (i.stock && i.min !== '' && i.min !== undefined && i.par !== '' && i.par !== undefined) parts.push(T('fillRule', i.min, i.par, cu));
+  const rt = ruleTxt(i, cu); if (rt) parts.push(rt);
   else if (i.par !== '' && i.par !== undefined) parts.push(`${T('par')} ${esc(i.par)}`);
   const need = needOf(i);
   if (need !== '') parts.push(need > 0 ? `<b>${T('need')} ${+need.toFixed(2)} ${esc(cu)}</b>` : `<span class="ok">${T('enough')} ✓</span>`);
@@ -998,31 +1008,100 @@ function backOwner(){ const o = store.get('xym_owner'); if (!o) return; store.de
 function asBar(){ const o = store.get('xym_owner'), el = $('#asbar'); if (!el) return;
   if (o && o !== PIN) { el.textContent = T('viewAs', areaName(store.get('xym_as') || '')); el.hidden = false; } else el.hidden = true; }
 
-// ---------- Stock tab: things counted every few days, in 3 groups (Jinjang / Noodle / Others) ----------
-Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', gJinjang:'Jinjang', gNoodle:'Noodle', gOthers:'Others',
-  stockHelp:'Count only UNOPENED boxes / bags. Open a new one → tap −1. Every 3–5 days check and type the real number, then Save.', stockHelpJJ:' Jinjang deliveries are added by themselves; items at their low level go on “Order from Jinjang”.',
-  fillRule:(m,p,u)=>`${m} or less → fill up to ${p} ${u}`, setLv:'Set levels', lvTitle:n=>`${n} – levels`, lvMin:'Low level (min) – order when stock is this or less', lvPar:'Fill up to (par)', lvSaved:'Levels saved ✓', lvRemove:'Remove from Stock tab',
-  toOrder:'To order', copyList:'Copy list', copied:'Copied ✓', needN:(q,u)=>`order ${q} ${u}`, addStock:'+ Add item', addedTo:(n,g)=>`${n} → ${g}`, removed:n=>`${n} removed`,
+// ---------- Order levels: weekday + Saturday (weekend order) ----------
+Object.assign(TXT.en, { satW:'Sat:', setLv:'Set levels', lvTitle:n=>`${n} – levels`, lvWd:'Weekday', lvSat:'Saturday (weekend order)', lvMin:'Low level – order when this or less', lvRq:'Order (fixed amount)', lvPar:'or Fill up to',
+  lvNote:'Fill in “Order” or “Fill up to”. Leave Saturday empty to use the weekday levels.', lvSaved:'Levels saved ✓', fillRule:(m,p,u)=>`${m} or less → fill up to ${p} ${u}`,
+  removedU:n=>`${n} removed`, undo:'Undo' });
+Object.assign(TXT.zh, { satW:'周六：', setLv:'设定', lvTitle:n=>`${n} – 设定数量`, lvWd:'平日', lvSat:'星期六（周末订货）', lvMin:'最低量 – 剩这么多或更少就订', lvRq:'订（固定数量）', lvPar:'或 补到',
+  lvNote:'「订」或「补到」选一个填。星期六不填就跟平日一样。', lvSaved:'已保存 ✓', fillRule:(m,p,u)=>`剩 ${m} 或更少 → 补到 ${p} ${u}`,
+  removedU:n=>`${n} 已移除`, undo:'复原' });
+const nz = v => v !== '' && v !== undefined && v !== null;
+const lvLink = (i, u) => { const t = ruleTxt(i, u); return ` · ${t ? esc(t) + ' · ' : ''}<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>`; };
+const isSat = () => new Date().getDay() === 6;
+function lvOf(i){ const L = i.lv || i, sat = isSat() && [L.smin, L.sq, L.spar].some(nz);
+  return sat ? { min:L.smin, rq:L.sq, par:L.spar } : { min:L.min, rq:L.rq, par:L.par }; }
+// how much to order for stock q: at or below the low level → fixed amount or fill up to par. needMin: no level → 0 (Stock tab)
+function needQty(q, i, needMin){
+  const L = lvOf(i); q = Number(q) || 0;
+  if (nz(L.min)) return q <= Number(L.min) ? (nz(L.rq) && Number(L.rq) ? Number(L.rq) : nz(L.par) ? Math.max(0, Math.ceil(L.par - q - 1e-9)) : 0) : 0;
+  if (!needMin && nz(L.par)) return Math.max(0, L.par - q);
+  return needMin ? 0 : '';
+}
+function ruleTxt(i, u){
+  const one = (m, r, p) => !nz(m) ? (nz(p) ? `par ${p}` : '') : nz(r) && Number(r) ? T('minRule', m, r, u) : nz(p) ? T('fillRule', m, p, u) : '';
+  const L = i.lv || i, wd = one(L.min, L.rq, L.par), sa = one(L.smin, L.sq, L.spar);
+  return [wd, sa ? T('satW') + ' ' + sa : ''].filter(Boolean).join(' · ');
+}
+function lvItem(id){ return (SK && SK.items.find(x => x.id === id)) || (DATA && DATA.items.find(x => x.id === id)) || (MD && MD.items.find(x => x.id === id)) || (DV && DV.items.find(x => x.id === id)); }
+function openLevels(id){
+  const i = lvItem(id); if (!i) return; const L = i.lv || i, u = esc(uName(i.unit || String(i.uom || '').toLowerCase()));
+  const f = (k, lab) => `<label class="lv">${lab}<span><input id="lv_${k}" class="qty sm" inputmode="decimal" value="${esc(nz(L[k]) ? L[k] : '')}"> ${u}</span></label>`;
+  $('#sTitle').textContent = T('lvTitle', itemName(i)); $('#sText').textContent = T('lvNote');
+  $('#sList').innerHTML = `<div class="lvh">${T('lvWd')}</div>${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}
+    <div class="lvh">${T('lvSat')}</div>${f('smin', T('lvMin'))}${f('sq', T('lvRq'))}${f('spar', T('lvPar'))}`;
+  $('#sBtns').innerHTML = `<button class="btn save" onclick="saveLevels('${esc(id)}')">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
+  $('#sum').classList.add('show');
+}
+async function saveLevels(id){
+  const L = {}; ['min','rq','par','smin','sq','spar'].forEach(k => L[k] = $('#lv_' + k).value.trim());
+  if (Object.values(L).find(v => v !== '' && isNaN(Number(v)))) { toast(T('numbers')); return; }
+  try { const r = await call('stockLevels', PIN, id, L); closeSum(); toast(T('lvSaved'));
+    if (SK) SK.items.filter(x => x.id === id).forEach(x => Object.assign(x, r));
+    [DATA, MD].forEach(d => d && d.items.filter(x => x.id === id).forEach(x => x.lv = r));
+    [DV, recall('deliv')].forEach((d, k) => { const x = d && d.items.find(y => y.id === id); if (x) { Object.assign(x, r); if (k) remember('deliv', d); } });
+    if (SK) remember('stock', SK);
+    redraw(() => MODE === 'stock' ? renderStock() : MODE === 'month' ? drawME() : MODE === 'daily' ? drawList() : null); }
+  catch(e){ toast(String(e.message||e)); }
+}
+// ---------- Owner: swipe an item to the left → 🗑 remove (with Undo) ----------
+function swipeWrap(id, html){ return isBoss() ? `<div class="swrap"><button class="bin" onclick="swipeDel('${esc(id)}')">🗑</button>${html}</div>` : html; }
+function swipeRows(){
+  if (!isBoss()) return;
+  document.querySelectorAll('#app .swrap > .row').forEach(row => {
+    let x0 = null, y0 = 0, dx = 0, drag = false;
+    row.addEventListener('pointerdown', e => { if (e.target.closest('input,button,a')) return; x0 = e.clientX; y0 = e.clientY; dx = 0; drag = false; });
+    row.addEventListener('pointermove', e => { if (x0 === null) return; const mx = e.clientX - x0, my = e.clientY - y0;
+      if (!drag && Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my)) { drag = true; row.style.transition = 'none'; }
+      if (drag) { dx = Math.min(0, Math.max(-96, mx + (row.classList.contains('open') ? -76 : 0))); row.style.transform = `translateX(${dx}px)`; } });
+    const end = () => { if (x0 === null) return; x0 = null; if (!drag) return; row.style.transition = ''; row.style.transform = '';
+      document.querySelectorAll('#app .swrap > .row.open').forEach(r => r !== row && r.classList.remove('open')); row.classList.toggle('open', dx < -40); };
+    ['pointerup', 'pointercancel', 'pointerleave'].forEach(ev => row.addEventListener(ev, end));
+  });
+}
+let UNDO = null;
+async function swipeDel(id){
+  const stock = MODE === 'stock', i = stock ? SK.items.find(x => x.id === id) : DATA.items.find(x => x.id === id); if (!i) return;
+  const name = itemName(i), grp = i.grp || 'Jinjang';
+  if (stock) SK.items = SK.items.filter(x => x.id !== id); else DATA.items = DATA.items.filter(x => x.id !== id);
+  redraw(stock ? renderStock : drawList);
+  try { if (stock) { SK = remember('stock', await call('stockSet', PIN, id, '')); if (MODE === 'stock') redraw(renderStock); } else await call('dailySet', PIN, id, false);
+    DV = null; showUndo(T('removedU', name), async () => { if (stock) { SK = remember('stock', await call('stockSet', PIN, id, grp)); if (MODE === 'stock') redraw(renderStock); } else { await call('dailySet', PIN, id, true); refreshDaily(); } }); }
+  catch(e){ toast(String(e.message||e)); stock ? loadStock() : load(); }
+}
+function showUndo(text, fn){
+  let el = $('#undo'); if (!el) { document.body.insertAdjacentHTML('beforeend', '<div id="undo" class="undo"><span></span><button></button></div>'); el = $('#undo'); }
+  el.querySelector('span').textContent = text; const b = el.querySelector('button'); b.textContent = T('undo');
+  b.onclick = async () => { el.classList.remove('show'); clearTimeout(UNDO); try { await fn(); } catch(e){ toast(String(e.message||e)); } };
+  el.classList.add('show'); clearTimeout(UNDO); UNDO = setTimeout(() => el.classList.remove('show'), 6000);
+}
+// ---------- Stock tab: counted every few days, 2 groups (Jinjang / Noodle) – all from Jinjang ----------
+Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', gJinjang:'Jinjang', gNoodle:'Noodle',
+  stockHelp:'Count only UNOPENED boxes / bags. Open a new one → tap −1. Every 3–5 days check and type the real number, then Save. Jinjang deliveries are added by themselves.',
+  orderN:n=>n?`Order (${n})`:'Order', needN:(q,u)=>`order ${q} ${u}`, addStock:'+ Add item', addedTo:(n,g)=>`${n} → ${g}`,
   use1:'−1', usedOk:(n,q,u)=>`${n}: −1 → ${q} ${u} left`, checkedAgo:(d)=>d===0?'checked today':`checked ${d} day${d===1?'':'s'} ago`, neverChecked:'never checked', saveCheck:n=>n?`Save count (${n})`:'Save count', stockSaved:n=>`Saved ${n} ✓`, left:'left', noStock:'No items here yet' });
-Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', gJinjang:'增江', gNoodle:'面', gOthers:'其他',
-  stockHelp:'只点还没开的箱 / 包。开新的一箱/一包 → 按 −1。每 3–5 天点一次，填实际数量再按保存。', stockHelpJJ:'增江送来的货会自动加上；到最低量的货品会自动出现在「向增江订货」。',
-  fillRule:(m,p,u)=>`剩 ${m} 或更少 → 补到 ${p} ${u}`, setLv:'设定', lvTitle:n=>`${n} – 设定数量`, lvMin:'最低量 (min) – 剩这么多或更少就订', lvPar:'补到 (par)', lvSaved:'已保存 ✓', lvRemove:'从库存页移除',
-  toOrder:'要订的', copyList:'复制清单', copied:'已复制 ✓', needN:(q,u)=>`订 ${q} ${u}`, addStock:'+ 加货品', addedTo:(n,g)=>`${n} → ${g}`, removed:n=>`${n} 已移除`,
+Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', gJinjang:'增江', gNoodle:'面',
+  stockHelp:'只点还没开的箱 / 包。开新的一箱/一包 → 按 −1。每 3–5 天点一次，填实际数量再按保存。增江送来的货会自动加上。',
+  orderN:n=>n?`订货 (${n})`:'订货', needN:(q,u)=>`订 ${q} ${u}`, addStock:'+ 加货品', addedTo:(n,g)=>`${n} → ${g}`,
   use1:'−1', usedOk:(n,q,u)=>`${n}：−1 → 剩 ${q} ${u}`, checkedAgo:(d)=>d===0?'今天点过':`${d} 天前点过`, neverChecked:'还没点过', saveCheck:n=>n?`保存数量 (${n})`:'保存数量', stockSaved:n=>`已保存 ${n} 项 ✓`, left:'剩', noStock:'这里还没有货品' });
 let SK = null, SEDITS = {}, SGRP = 'Jinjang';
 try { SGRP = localStorage.getItem('xym_sgrp') || 'Jinjang'; } catch(e){}
-const SGROUPS = ['Jinjang', 'Noodle', 'Others'];
+const SGROUPS = ['Jinjang', 'Noodle'];
+const grpOf = i => i.grp === 'Noodle' ? 'Noodle' : 'Jinjang';
 const uName = u => LANG === 'zh' ? (UNIT_ZH[String(u).toLowerCase()] || u) : u;
 const isBoss = () => curUser().role === 'Owner' && !store.get('xym_owner');
-// how much to order: fixed amount (ReorderQty) or fill up to par, when stock is at or below the low level
-function stockNeed(i){
-  if (i.qty === '' || i.min === '' || i.min === undefined) return 0;
-  if (Number(i.qty) > Number(i.min)) return 0;
-  if (i.rq) return Number(i.rq);
-  return i.par !== '' && i.par !== undefined ? Math.max(0, Math.round((i.par - i.qty) * 100) / 100) : 0;
-}
+const stockNeed = i => i.qty === '' ? 0 : needQty(i.qty, i, true);
 async function loadStock(){
-  MODE = 'stock';
+  MODE = 'stock'; if (!SGROUPS.includes(SGRP)) SGRP = 'Jinjang';
   if (!SK) SK = recall('stock');
   if (SK) { renderStock(); refreshStock(); return; }
   $('#app').innerHTML = bootHtml();
@@ -1036,61 +1115,33 @@ async function refreshStock(){
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
 function renderStock(){
   const u = curUser(), who = u.role === 'Owner' ? 'Owner' : u.area, boss = isBoss();
-  const items = SK.items.filter(i => (i.grp || 'Jinjang') === SGRP);
-  const need = items.filter(i => stockNeed(i) > 0);
+  const items = SK.items.filter(i => grpOf(i) === SGRP), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
   const rows = items.map(i => {
     const old = i.days === '' || i.days > 5, unit = esc(uName(i.unit)), nd = stockNeed(i);
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
       i.days === '' ? '' : `<span style="color:${old?'var(--red)':'var(--muted)'}">${T('checkedAgo', i.days)}</span>`,
-      nd > 0 ? `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>` : '',
-      i.rq && i.min !== '' ? T('minRule', i.min, i.rq, uName(i.unit)) : i.min !== '' && i.par !== '' ? T('fillRule', i.min, i.par, uName(i.unit)) : i.par !== '' ? `par ${esc(i.par)}` : '',
+      nd > 0 ? `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>` : '', ruleTxt(i, uName(i.unit)),
       boss ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
-    return `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div></div>
+    return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div></div>
       <button class="btn ghost use1" onclick="useOne('${esc(i.id)}')">${T('use1')}</button>
-      <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`; }).join('');
-  const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => (i.grp || 'Jinjang') === g && stockNeed(i) > 0).length;
+      <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`); }).join('');
+  const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => grpOf(i) === g && stockNeed(i) > 0).length;
     return `<button class="chip ${g===SGRP?'on':''}" onclick="setSGrp('${g}')">${T('g'+g)}${n ? ` <span class="badge">${n}</span>` : ''}</button>`; }).join('')}</div>`;
-  const btns = [SGRP === 'Jinjang' ? `<button class="btn save" onclick="goJJOrder()">${T('jjGo')}</button>` : '',
-    boss ? `<button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button>` : ''].filter(Boolean).join('');
-  const box = SGRP !== 'Jinjang' && need.length ? `<div class="needbox"><b>${T('toOrder')}</b><br>${need.map(i => `${esc(itemName(i))} ${stockNeed(i)} ${esc(uName(i.unit))}`).join('<br>')}
-      <div style="margin-top:8px"><button class="btn ghost" onclick="copyNeed()">${T('copyList')}</button></div></div>` : '';
   $('#app').innerHTML = `<header><h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(who))} · ${esc(SK.today)}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
-    ${btns ? `<div class="dbtns">${btns}</div>` : ''}
-    <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}${SGRP === 'Jinjang' ? T('stockHelpJJ') : ''}</div>${box}
+    ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
+    <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>
     <div class="list" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
-    <footer><div class="prog" id="prog"></div><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
+    <footer><button class="btn ${nAll?'save':'ghost'}" onclick="goJJOrder()">${T('orderN', nAll)}</button><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
     const id = e.target.dataset.id, v = e.target.value.trim(); if (v === '') delete SEDITS[id]; else SEDITS[id] = v;
     e.target.classList.toggle('changed', id in SEDITS); const n = Object.keys(SEDITS).length, b = $('#ssave'); b.disabled = !n; b.textContent = T('saveCheck', n); }));
-}
-function copyNeed(){
-  const txt = SK.items.filter(i => (i.grp || 'Jinjang') === SGRP && stockNeed(i) > 0).map(i => `${LANG==='zh' ? (i.zh || i.name) : i.name} ${stockNeed(i)} ${uName(i.unit)}`).join('\n');
-  const ok = () => toast(T('copied'));
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(txt).then(ok).catch(() => prompt('', txt)); else prompt('', txt);
-}
-function openLevels(id){
-  const i = SK.items.find(x => x.id === id); if (!i) return; const u = esc(uName(i.unit));
-  $('#sTitle').textContent = T('lvTitle', itemName(i)); $('#sText').textContent = '';
-  $('#sList').innerHTML = `<label class="lv">${T('lvMin')}<span><input id="lvMin" class="qty sm" inputmode="decimal" value="${esc(i.min)}"> ${u}</span></label>
-    <label class="lv">${T('lvPar')}<span><input id="lvPar" class="qty sm" inputmode="decimal" value="${esc(i.par)}"> ${u}</span></label>
-    <div class="lv"><span>${SGROUPS.map(g => `<button class="chip ${g===(i.grp||'Jinjang')?'on':''}" onclick="moveStock('${esc(id)}','${g}')">${T('g'+g)}</button>`).join(' ')}</span>
-      <a href="#" style="color:var(--red)" onclick="moveStock('${esc(id)}','');return false">${T('lvRemove')}</a></div>`;
-  $('#sBtns').innerHTML = `<button class="btn save" onclick="saveLevels('${esc(id)}')">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
-  $('#sum').classList.add('show');
-}
-async function saveLevels(id){
-  const mn = $('#lvMin').value.trim(), pr = $('#lvPar').value.trim();
-  if ((mn && isNaN(Number(mn))) || (pr && isNaN(Number(pr)))) { toast(T('numbers')); return; }
-  try { SK = remember('stock', await call('stockLevels', PIN, id, mn, pr)); closeSum(); redraw(renderStock); toast(T('lvSaved'));
-    const a = { min: mn === '' ? '' : Number(mn), par: pr === '' ? '' : Number(pr), rq: '' };
-    [DV, recall('deliv')].forEach((d, k) => { const x = d && d.items.find(y => y.id === id); if (x) { Object.assign(x, a); if (k) remember('deliv', d); } }); }
-  catch(e){ toast(String(e.message||e)); }
+  swipeRows();
 }
 async function moveStock(id, g){
-  const i = (SK.items.concat(SK.more || [])).find(x => x.id === id); closePick();
-  try { SK = remember('stock', await call('stockSet', PIN, id, g)); redraw(renderStock); toast(g ? T('addedTo', itemName(i || {name:id}), T('g'+g)) : T('removed', itemName(i || {name:id}))); DV = null; }
+  const i = (SK.more || []).find(x => x.id === id); closePick();
+  try { SK = remember('stock', await call('stockSet', PIN, id, g)); redraw(renderStock); toast(T('addedTo', itemName(i || {name:id}), T('g'+g))); DV = null; }
   catch(e){ toast(String(e.message||e)); }
 }
 function openAddStock(){
