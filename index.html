@@ -443,7 +443,7 @@ function tabsHtml(){
   }
   return '';
 }
-function setMode(m){ MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else showDaily(); }
+function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else showDaily(); }
 // Daily tab: show what we already have straight away, refresh quietly behind it
 async function showDaily(){
   if (!DATA) return load();
@@ -483,7 +483,7 @@ async function refreshOrders(){
 function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); else if (MODE==='stock') refreshStock(); badgeRefresh(); }
 setInterval(quietRefresh, 60000);
 setInterval(() => { if (PIN && !document.hidden && MODE === 'deliv') refreshDeliv(); }, 15000);   // Deliveries tab: check every 15 s
-document.addEventListener('visibilitychange', () => { if (!document.hidden) quietRefresh(); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) quietRefresh(); else if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); });
 const LOC_ORDER = ['BAR1','STR1','KTC1','STR2','FD1','OUT1','OTH1','TLT1','HST1','JJ1'];
 function locName(i){ return LANG==='zh' && i.locZh ? i.locZh : i.locName; }
 
@@ -1107,7 +1107,7 @@ async function loadStock(){
   catch(e){ $('#app').innerHTML = `<div class="center"><h1>${T('noConn')}</h1><p>${esc(String(e.message||e))}</p><button class="btn save" style="width:100%" onclick="loadStock()">${T('retry')}</button></div>`; }
 }
 async function refreshStock(){
-  try { const d = await call('getStock', PIN); if (MODE !== 'stock' || busy() || Object.keys(SEDITS).length) return;
+  try { if (SUSE_BUSY || Object.keys(SUSE).length) return; const d = await call('getStock', PIN); if (MODE !== 'stock' || busy() || Object.keys(SEDITS).length || SUSE_BUSY || Object.keys(SUSE).length) return;
     const ch = JSON.stringify(d.items) !== JSON.stringify(SK && SK.items); SK = remember('stock', d); if (ch) redraw(renderStock); } catch(e){}
 }
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
@@ -1131,7 +1131,7 @@ function renderStock(){
     ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
     <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>
     <div class="list" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
-    <footer><button class="btn ${nAll?'save':'ghost'}" onclick="goJJOrder()">${T('orderN', nAll)}</button><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
+    <footer><button class="btn ${nAll?'save':'ghost'}" onclick="stockOrder()">${T('orderN', nAll)}</button><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
     const id = e.target.dataset.id, v = e.target.value.trim(); if (v === '') delete SEDITS[id]; else SEDITS[id] = v;
     e.target.classList.toggle('changed', id in SEDITS); const n = Object.keys(SEDITS).length, b = $('#ssave'); b.disabled = !n; b.textContent = T('saveCheck', n); }));
@@ -1153,18 +1153,38 @@ function drawAddStock(q){
   const list = (SK.more || []).filter(i => !q || (i.name+' '+i.zh+' '+i.id).toLowerCase().includes(q));
   $('#sList').innerHTML = list.map(i => `<div class="srow pick" onclick="moveStock('${esc(i.id)}','${SGRP}')"><span>${lineName(i)}</span><b class="sub">${esc(uName(i.unit))}</b></div>`).join('') || `<div class="empty">${T('noItems')}</div>`;
 }
-async function useOne(id){
+// −1 shows at once; taps are collected and sent together in the background (no waiting on the server)
+let SUSE = {}, SUSE_T = null, SUSE_BUSY = null;
+function useOne(id){
   const i = SK.items.find(x => x.id === id); if (!i) return;
-  const before = i.qty; i.qty = Math.max(0, (Number(i.qty) || 0) - 1); i.at = hhmm(); redraw(renderStock);
-  try { const q = await call('stockUse', PIN, id, 1); i.qty = q; remember('stock', SK); toast(T('usedOk', itemName(i), q, uName(i.unit))); }
-  catch(e){ i.qty = before; redraw(renderStock); toast(String(e.message||e)); }
+  i.qty = Math.max(0, Math.round(((Number(i.qty) || 0) - 1) * 100) / 100); i.at = hhmm(); i.days = i.days === '' ? '' : i.days;
+  SUSE[id] = (SUSE[id] || 0) + 1; remember('stock', SK);
+  redraw(renderStock); toast(T('usedOk', itemName(i), i.qty, uName(i.unit)));
+  clearTimeout(SUSE_T); SUSE_T = setTimeout(flushUse, 1200);
+}
+async function flushUse(){
+  clearTimeout(SUSE_T);
+  if (SUSE_BUSY) { await SUSE_BUSY; }
+  const list = Object.keys(SUSE).map(id => ({ id, n: SUSE[id] })); if (!list.length) return true;
+  SUSE = {};
+  SUSE_BUSY = call('stockUseMany', PIN, list).then(r => { Object.keys(r || {}).forEach(id => { const i = SK && SK.items.find(x => x.id === id); if (i && !SUSE[id]) i.qty = r[id]; }); if (SK) remember('stock', SK); return true; })
+    .catch(e => { list.forEach(x => SUSE[x.id] = (SUSE[x.id] || 0) + x.n); toast(String(e.message||e)); SUSE_T = setTimeout(flushUse, 5000); return false; });
+  const ok = await SUSE_BUSY; SUSE_BUSY = null; return ok;
+}
+// Order: save typed counts and send −1 taps first, then open Order from Jinjang with the fresh numbers
+async function stockOrder(){
+  const b = document.querySelector('footer .btn'); if (b) { b.disabled = true; b.textContent = T('working'); }
+  if (Object.keys(SEDITS).length && !(await saveStock())) { if (b) { b.disabled = false; b.textContent = T('orderN', 0); } return; }
+  await flushUse();
+  goJJOrder();
 }
 async function saveStock(){
   const list = Object.keys(SEDITS).map(id => ({ id, qty: SEDITS[id] }));
-  if (list.find(x => isNaN(Number(x.qty)))) { toast(T('numbers')); return; }
+  if (list.find(x => isNaN(Number(x.qty)))) { toast(T('numbers')); return false; }
   const b = $('#ssave'); b.disabled = true; b.textContent = T('working');
-  try { SK = remember('stock', await call('stockCount', PIN, list)); SEDITS = {}; redraw(renderStock); toast(T('stockSaved', list.length)); }
-  catch(e){ b.disabled = false; b.textContent = T('saveCheck', list.length); toast(String(e.message||e)); }
+  if (SUSE_BUSY || Object.keys(SUSE).length) await flushUse();
+  try { SK = remember('stock', await call('stockCount', PIN, list)); SEDITS = {}; redraw(renderStock); toast(T('stockSaved', list.length)); return true; }
+  catch(e){ b.disabled = false; b.textContent = T('saveCheck', list.length); toast(String(e.message||e)); return false; }
 }
 
 PIN = store.get('xym_pin'); asBar();
