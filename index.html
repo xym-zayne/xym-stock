@@ -168,7 +168,9 @@ let PIN = null, DATA = null, FILTER = '', GROUP = 'All', EDITS = {};
 let MODE = 'daily', MODE_SET = '', MD = null, MLOC = 'All', MEDITS = {}, OD = null, USER = null;
 // Last data seen on this phone → tabs open instantly, then refresh quietly in the background
 function remember(k, d){ try { if (d) localStorage.setItem('xym_snap_' + k + '_' + PIN, JSON.stringify(d)); } catch(e){} return d; }
-function recall(k){ try { const j = localStorage.getItem('xym_snap_' + k + '_' + PIN); return j ? JSON.parse(j) : null; } catch(e){ return null; } }
+function recall(k){ try { const j = localStorage.getItem('xym_snap_' + k + '_' + PIN), d = j ? JSON.parse(j) : null; const r = store.get('xym_role');
+  if (d && d.user && d.user.role && r && d.user.role !== r) return null;   // a saved screen from another account is never shown
+  return d; } catch(e){ return null; } }
 function hhmm(){ const d = new Date(); return String(d.getHours()).padStart(2,'0') + ':' + String(d.getMinutes()).padStart(2,'0'); }
 const $ = s => document.querySelector(s);
 const store = { get(k){ try{ return localStorage.getItem(k); }catch(e){ return null; } },
@@ -180,10 +182,13 @@ function toast(t){ const el=$('#toast'); el.textContent=t; el.classList.add('sho
 // Inside Google (browser link): google.script.run. Installable app: POST to the same script's web-app URL.
 const API_URL = 'https:\/\/script.google.com/macros/s/AKfycbz3iJWKR2UyudaZZuEXOfWaPLTFl9QH1fwy4xCRXQIFQAj9ci7ztmW5pi64WDFNJMQSZw/exec';
 function call(fn, ...args){
-  if (window.google && google.script && google.script.run)
-    return new Promise((ok, bad) => google.script.run.withSuccessHandler(ok).withFailureHandler(e => bad(e))[fn](...args));
-  return fetch(API_URL, { method:'POST', body: JSON.stringify({ fn, args }) })
-    .then(r => r.json()).then(r => { if (!r.ok) throw new Error(r.error); return r.data; });
+  const p = (window.google && google.script && google.script.run)
+    ? new Promise((ok, bad) => google.script.run.withSuccessHandler(ok).withFailureHandler(e => bad(e))[fn](...args))
+    : fetch(API_URL, { method:'POST', body: JSON.stringify({ fn, args }) }).then(r => r.json()).then(r => { if (!r.ok) throw new Error(r.error); return r.data; });
+  // an answer for another account (owner switched account while it was loading) is thrown away, so it never shows on the new account
+  const pin = args[0];
+  const stale = () => pin !== undefined && PIN && pin !== PIN && typeof pin === 'string' && /^\d+$/.test(pin);
+  return p.then(d => stale() ? new Promise(() => {}) : d, e => stale() ? new Promise(() => {}) : Promise.reject(e));
 }
 
 // ---------- Language (English / 中文), remembered on this phone ----------
@@ -1006,6 +1011,8 @@ async function openSwitch(){
   catch(e){ $('#sList').innerHTML = `<div class="empty">${esc(String(e.message||e))}</div>`; }
 }
 function useAccount(p, role){
+  if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse();   // send this account's −1 taps before switching
+  if (typeof SCOUNT !== 'undefined') { SCOUNT = null; SUSE_BUSY = null; }
   PIN = p; store.set('xym_pin', p); store.set('xym_role', role || '');
   DATA = null; MD = null; OD = null; DV = null; DVIEW = null; USER = null; SK = null; SEDITS = {}; EDITS = {}; FILTER = ''; GROUP = 'All'; MODE = 'daily'; MODE_SET = '';
   asBar(); window.scrollTo(0, 0); load();
@@ -1018,10 +1025,10 @@ function asBar(){ const o = store.get('xym_owner'), el = $('#asbar'); if (!el) r
 
 // ---------- Order levels: weekday + Saturday (weekend order) ----------
 Object.assign(TXT.en, { satW:'Sat:', setLv:'Set levels', lvTitle:n=>`${n} – levels`, lvWd:'Weekday', lvSat:'Saturday (weekend order)', lvMin:'Low level – order when this or less', lvRq:'Order (fixed amount)', lvPar:'or Fill up to',
-  lvNote:'Fill in “Order” or “Fill up to”. Leave Saturday empty to use the weekday levels.', lvSaved:'Levels saved ✓', fillRule:(m,p,u)=>`${m} or less → fill up to ${p} ${u}`,
+  lvNote:'Fill in “Order” or “Fill up to”. Leave Saturday empty to use the weekday levels.', lvNote1:'Same every day. Fill in “Order” or “Fill up to”.', lvSaved:'Levels saved ✓', fillRule:(m,p,u)=>`${m} or less → fill up to ${p} ${u}`,
   removedU:n=>`${n} removed`, undo:'Undo' });
 Object.assign(TXT.zh, { satW:'周六：', setLv:'设定', lvTitle:n=>`${n} – 设定数量`, lvWd:'平日', lvSat:'星期六（周末订货）', lvMin:'最低量 – 剩这么多或更少就订', lvRq:'订（固定数量）', lvPar:'或 补到',
-  lvNote:'「订」或「补到」选一个填。星期六不填就跟平日一样。', lvSaved:'已保存 ✓', fillRule:(m,p,u)=>`剩 ${m} 或更少 → 补到 ${p} ${u}`,
+  lvNote:'「订」或「补到」选一个填。星期六不填就跟平日一样。', lvNote1:'每天一样。「订」或「补到」选一个填。', lvSaved:'已保存 ✓', fillRule:(m,p,u)=>`剩 ${m} 或更少 → 补到 ${p} ${u}`,
   removedU:n=>`${n} 已移除`, undo:'复原' });
 const nz = v => v !== '' && v !== undefined && v !== null;
 const lvLink = (i, u) => ` · <a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>`;   // level details stay inside "Set levels" (less clutter)
@@ -1044,14 +1051,17 @@ function lvItem(id){ return (SK && SK.items.find(x => x.id === id)) || (DATA && 
 function openLevels(id){
   const i = lvItem(id); if (!i) return; const L = i.lv || i, u = esc(uName(i.unit || String(i.uom || '').toLowerCase()));
   const f = (k, lab) => `<label class="lv">${lab}<span><input id="lv_${k}" class="qty sm" inputmode="decimal" value="${esc(nz(L[k]) ? L[k] : '')}"> ${u}</span></label>`;
-  $('#sTitle').textContent = T('lvTitle', itemName(i)); $('#sText').textContent = T('lvNote');
-  $('#sList').innerHTML = `<div class="lvh">${T('lvWd')}</div>${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}
-    <div class="lvh">${T('lvSat')}</div>${f('smin', T('lvMin'))}${f('sq', T('lvRq'))}${f('spar', T('lvPar'))}`;
+  // Saturday (weekend) levels only for noodles; Jinjang items use the same levels every day
+  const noodle = !!((SK && SK.items.find(x => x.id === id && x.grp === 'Noodle')) || (DV && DV.items.find(x => x.id === id && x.sg === 'Noodle')));
+  $('#sTitle').textContent = T('lvTitle', itemName(i)); $('#sText').textContent = noodle ? T('lvNote') : T('lvNote1');
+  $('#sList').innerHTML = noodle ? `<div class="lvh">${T('lvWd')}</div>${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}
+    <div class="lvh">${T('lvSat')}</div>${f('smin', T('lvMin'))}${f('sq', T('lvRq'))}${f('spar', T('lvPar'))}`
+    : `${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}`;
   $('#sBtns').innerHTML = `<button class="btn save" onclick="saveLevels('${esc(id)}')">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
   $('#sum').classList.add('show');
 }
 async function saveLevels(id){
-  const L = {}; ['min','rq','par','smin','sq','spar'].forEach(k => L[k] = $('#lv_' + k).value.trim());
+  const L = {}; ['min','rq','par','smin','sq','spar'].forEach(k => { const el = $('#lv_' + k); L[k] = el ? el.value.trim() : ''; });   // no Saturday boxes → Saturday cleared (same every day)
   if (Object.values(L).find(v => v !== '' && isNaN(Number(v)))) { toast(T('numbers')); return; }
   try { const r = await call('stockLevels', PIN, id, L); closeSum(); toast(T('lvSaved'));
     if (SK) SK.items.filter(x => x.id === id).forEach(x => Object.assign(x, r));
