@@ -1172,19 +1172,24 @@ async function flushUse(){
   const ok = await SUSE_BUSY; SUSE_BUSY = null; return ok;
 }
 // Order: save typed counts and send −1 taps first, then open Order from Jinjang with the fresh numbers
+// Opens at once from the numbers already on the phone; saving runs in the background.
 async function stockOrder(){
-  const b = document.querySelector('footer .btn'); if (b) { b.disabled = true; b.textContent = T('working'); }
-  if (Object.keys(SEDITS).length && !(await saveStock())) { if (b) { b.disabled = false; b.textContent = T('orderN', 0); } return; }
-  await flushUse();
-  goJJOrder();
+  Object.keys(SEDITS).forEach(id => { const i = SK.items.find(x => x.id === id); if (i && !isNaN(Number(SEDITS[id]))) i.qty = Number(SEDITS[id]); });
+  const pend = (async () => { if (Object.keys(SEDITS).length) await saveStock(); await flushUse(); })();
+  if (!DV) DV = recall('deliv');
+  if (!DV) { const b = document.querySelector('footer .btn'); if (b) { b.disabled = true; b.textContent = T('working'); } await pend; return goJJOrder(); }
+  SK.items.forEach(x => { const d = DV.items.find(y => y.id === x.id); if (d) Object.assign(d, { onHand: x.qty, min: x.min, rq: x.rq, par: x.par, smin: x.smin, sq: x.sq, spar: x.spar }); });
+  if (DATA && DATA.items) DATA.items.forEach(x => { const d = DV.items.find(y => y.id === x.id && !y.stock); if (d && x.qty !== '' && x.qty !== undefined) d.onHand = Number(x.qty); });
+  MODE_SET = 'deliv'; MODE = 'deliv'; newDO('order');
+  pend.then(() => call('getDeliveries', PIN)).then(d => { if (d && d.items) DV = remember('deliv', d); }).catch(() => {});
 }
 async function saveStock(){
   const list = Object.keys(SEDITS).map(id => ({ id, qty: SEDITS[id] }));
   if (list.find(x => isNaN(Number(x.qty)))) { toast(T('numbers')); return false; }
   const b = $('#ssave'); b.disabled = true; b.textContent = T('working');
   if (SUSE_BUSY || Object.keys(SUSE).length) await flushUse();
-  try { SK = remember('stock', await call('stockCount', PIN, list)); SEDITS = {}; redraw(renderStock); toast(T('stockSaved', list.length)); return true; }
-  catch(e){ b.disabled = false; b.textContent = T('saveCheck', list.length); toast(String(e.message||e)); return false; }
+  try { SK = remember('stock', await call('stockCount', PIN, list)); SEDITS = {}; if (MODE === 'stock') redraw(renderStock); toast(T('stockSaved', list.length)); return true; }
+  catch(e){ if (b) b.disabled = false; b.textContent = T('saveCheck', list.length); toast(String(e.message||e)); return false; }
 }
 
 PIN = store.get('xym_pin'); asBar();
