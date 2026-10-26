@@ -167,7 +167,7 @@
 let PIN = null, DATA = null, FILTER = '', GROUP = 'All', EDITS = {};
 let MODE = 'daily', MODE_SET = '', MD = null, MLOC = 'All', MEDITS = {}, OD = null, USER = null;
 // Last data seen on this phone → tabs open instantly, then refresh quietly in the background
-function remember(k, d){ try { if (d) localStorage.setItem('xym_snap_' + k + '_' + PIN, JSON.stringify(d)); } catch(e){} return d; }
+function remember(k, d){ if (k === 'deliv' && d && d.list) overlay(d); try { if (d) localStorage.setItem('xym_snap_' + k + '_' + PIN, JSON.stringify(d)); } catch(e){} return d; }
 function recall(k){ try { const j = localStorage.getItem('xym_snap_' + k + '_' + PIN), d = j ? JSON.parse(j) : null; const r = store.get('xym_role');
   if (d && d.user && d.user.role && r && d.user.role !== r) return null;   // a saved screen from another account is never shown
   return d; } catch(e){ return null; } }
@@ -746,7 +746,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock for some items', shortTx:'Send what you have now. The missing amount goes into a new order by itself, so BSD does not need to ask again.', shortL:(a,b)=>`asked ${a}, sending ${b}`, nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send now – rest later', shortNo:'Send now – rest not needed', saving:'saving…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock for some items', shortTx:'Send what you have now. The missing amount goes into a new order by itself, so BSD does not need to ask again.', shortL:(a,b)=>`asked ${a}, sending ${b}`, tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send now – rest later', shortNo:'Send now – rest not needed', saving:'saving…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -756,7 +756,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'有些货不够', shortTx:'先送有的货。缺的数量会自动开一张新单，BSD 不用再下单。', shortL:(a,b)=>`要 ${a}，送 ${b}`, nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送 – 缺的稍后补', shortNo:'先送 – 缺的不用补', saving:'保存中…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'有些货不够', shortTx:'先送有的货。缺的数量会自动开一张新单，BSD 不用再下单。', shortL:(a,b)=>`要 ${a}，送 ${b}`, tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送 – 缺的稍后补', shortNo:'先送 – 缺的不用补', saving:'保存中…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -797,6 +797,7 @@ function dHeader(title){
   return `<header><h1>${title}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
     <div class="who">${esc(areaName(who))} · ${esc(DV.today)}<br>${acctBtns()}</div></header>`;
 }
+let DONE_OPEN = false;   // Done (received / cancelled) list is closed until tapped
 function renderDeliv(){
   if (DVIEW && DVIEW.kind === 'new') return renderNew();
   if (DVIEW && DVIEW.kind === 'do') return renderDO();
@@ -807,7 +808,9 @@ function renderDeliv(){
   const btns = (side === 'JJ' ? [['request', T('newReq')]] : [['order', T('newOrder')], ['send', T('newSend')]])
     .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('');
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
-  const body = sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + sec(T('done'), doneL);
+  const done = doneL.length ? `<div class="group" style="cursor:pointer" onclick="DONE_OPEN=!DONE_OPEN;redraw(renderDeliv)">${DONE_OPEN ? '▾' : '▸'} ${T('done')} · ${doneL.length} <span class="sub">${T(DONE_OPEN ? 'tapHide' : 'tapShow')}</span></div>`
+    + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
+  const body = sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
     `<div class="dbtns">${btns}${isOwnerD() ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}<button class="btn ghost" style="flex:none;min-width:52px" onclick="toast(T('working'));reloadDeliv()">↻</button></div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
@@ -882,7 +885,7 @@ async function submitNew(){
         sentKg: sent && L.wt ? x.kg : '', recvKg: '', decide: !!x.decide }; }) };
   DV.list.unshift(o); remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T('createdOk', id));
   offerNotice(id, mode === 'request' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : 'back');
-  bgAct('createDelivery', [mode, send, note], { lid: id },
+  bgAct('createDelivery', [mode, send, note], { lid: id, view: [o] },
     e => { DV.list = DV.list.filter(x => x !== o); remember('deliv', DV); closeSum(); DLINES = keep; DNOTE = note; DVIEW = { kind:'new', mode }; if (MODE === 'deliv') renderNew(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
 // ---------- Background saving: actions show at once, the server catches up (one at a time, in order) ----------
@@ -893,12 +896,22 @@ const HANDLERS = {};
 function obox(){ try { return JSON.parse(store.get('xym_outbox') || '[]'); } catch(e){ return []; } }
 function oboxSet(a){ if (a.length) store.set('xym_outbox', JSON.stringify(a)); else store.del('xym_outbox'); DPEND = a.length; }
 let DPEND = obox().length, DQ_RUN = false;
+// Anything still waiting to be saved is laid over every list we show or keep, so a fresh list from the server
+// (taken before the save arrived) can never bring back an order you already cancelled / sent / received.
+function overlay(d){
+  const a = obox(); if (!a.length) return d;
+  a.forEach(j => (j.view || []).forEach(v => { const id = IDMAP[v.id] || v.id;
+    const i = d.list.findIndex(o => o.id === id || o.id === v.id), c = Object.assign(JSON.parse(JSON.stringify(v)), { id, pending: true });
+    if (i >= 0) d.list[i] = c; else d.list.unshift(c); }));
+  return d;
+}
 function nextLocalId(){ let n = 0; DV.list.forEach(o => { const m = String(IDMAP[o.id] || o.id).match(/(\d+)$/); if (m) n = Math.max(n, Number(m[1])); }); return 'DO-' + String(n + 1).padStart(4, '0'); }
 // meta: ids = argument positions holding a DO number (swapped for the real one when sent) · lid / flid = guessed new / follow-up number
 function bgAct(fn, args, meta, undo){
   const key = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
   while (args.length < 3) args.push(null);
-  const a = obox(); a.push(Object.assign({ key, fn, args, pin: PIN }, meta || {})); oboxSet(a);
+  const m = Object.assign({}, meta || {}); if (m.view) m.view = JSON.parse(JSON.stringify(m.view));
+  const a = obox(); a.push(Object.assign({ key, fn, args, pin: PIN }, m)); oboxSet(a);
   if (undo) HANDLERS[key] = undo;
   runOutbox();
 }
@@ -1034,7 +1047,7 @@ async function doAct(fn, recv, okMsg, later){
       DV.list.unshift(fo); FOLLOW[o.id] = fid; } }
   remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T(okMsg));
   if (!recv) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'sent');
-  bgAct(fn, [o.id, lines, !!later], { ids: [0], flid: fo ? fo.id : '' },
+  bgAct(fn, [o.id, lines, !!later], { ids: [0], flid: fo ? fo.id : '', view: fo ? [o, fo] : [o] },
     e => { const i = DV.list.indexOf(o); if (i >= 0) DV.list[i] = JSON.parse(snap); if (fo) DV.list = DV.list.filter(x => x !== fo); remember('deliv', DV);
       if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
@@ -1074,7 +1087,7 @@ async function doCancel(){
   CANCEL_ARMED = '';
   const o = DV.list.find(x => x.id === id), prev = o.status;
   o.status = 'Cancelled'; o.pending = true; remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T('cancelled'));
-  bgAct('cancelDelivery', [id], { ids: [0] }, e => { o.status = prev; delete o.pending; remember('deliv', DV); if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
+  bgAct('cancelDelivery', [id], { ids: [0], view: [o] }, e => { o.status = prev; delete o.pending; remember('deliv', DV); if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
 // ---------- Owner statement ----------
 function ymOf(back){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - back); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
