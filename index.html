@@ -1029,7 +1029,7 @@ async function doAct(fn, recv, okMsg, later){
     if (sh.length) {
       $('#sTitle').textContent = T('shortT'); $('#sText').textContent = T('shortTx');
       $('#sList').innerHTML = sh.map(x => `<div class="srow"><span>${x}</span></div>`).join('');
-      $('#sBtns').innerHTML = `<button class="btn save" onclick="closeSum();doAct('sendDelivery',false,'sentOk',true)">${T('shortYes')}</button><button class="btn ghost" onclick="closeSum();doAct('sendDelivery',false,'sentOk',false)">${T('shortNo')}</button><button class="btn clear" onclick="closeSum()">${T('back')}</button>`;
+      $('#sBtns').innerHTML = `<button class="btn save" onclick="closeSum();doAct('sendDelivery',false,'sentOk',true)">${T('shortYes')}</button>`;   /* one button only (Zayne); tap outside to go back */
       $('#sum').classList.add('show'); return;
     }
   }
