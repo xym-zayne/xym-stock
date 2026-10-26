@@ -316,19 +316,19 @@ function drawList(){
   const by = {}; items.forEach(i => (by[i.group] = by[i.group] || []).push(i));
   $('#body').innerHTML = Object.keys(by).map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">` +
     by[g].map(i => {
-      const val = (i.row in EDITS) ? EDITS[i.row] : (i.qty===''?'':i.qty);
+      const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
       const sub = itemSub(i), hint = itemHint(i);
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
           <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
-        <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="–">
+        <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
       </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
   swipeRows();
   document.querySelectorAll('.qty').forEach(inp => inp.addEventListener('input', e => {
     const row = Number(e.target.dataset.row), it = DATA.items.find(x => x.row===row);
     const v = e.target.value.trim();
-    if (v === String(it.qty===''?'':it.qty)) delete EDITS[row]; else EDITS[row] = v;
+    if (v === (it.counted ? String(it.qty) : '')) delete EDITS[row]; else EDITS[row] = v;   /* same number as last time still counts as today's count */
     e.target.classList.toggle('changed', row in EDITS); updateFooter();
   }));
   updateFooter();
