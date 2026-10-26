@@ -361,7 +361,16 @@ function askJJOrder(){
   $('#sum').classList.add('show');
 }
 async function goJJOrder(){
-  closeSum(); MODE_SET = 'deliv'; MODE = 'deliv'; DVIEW = { kind:'wait' };
+  closeSum(); MODE_SET = 'deliv'; MODE = 'deliv';
+  if (!DV) DV = recall('deliv');
+  if (DV && DV.items) {   // open at once from the numbers on the phone (today's daily count merged in); saving + refresh run in the background
+    if (DATA && DATA.items) DATA.items.forEach(x => { const d = DV.items.find(y => y.id === x.id && !y.stock); if (d && x.qty !== '' && x.qty !== undefined) d.onHand = Number(x.qty); });
+    newDO('order');
+    (async () => { for (let t = 0; t < 40 && JSON.parse(store.get('xym_pending')||'[]').length; t++) { flush(); await new Promise(r => setTimeout(r, 500)); }
+      try { const d = await call('getDeliveries', PIN); if (d && d.items) DV = remember('deliv', d); } catch(e){} })();
+    return;
+  }
+  DVIEW = { kind:'wait' };
   $('#app').innerHTML = bootHtml(); toast(T('jjPrep'));
   for (let t = 0; t < 40 && JSON.parse(store.get('xym_pending')||'[]').length; t++) { flush(); await new Promise(r => setTimeout(r, 500)); }
   try { DV = remember('deliv', await call('getDeliveries', PIN)); } catch(e){ if (!DV) DV = recall('deliv'); }
@@ -771,6 +780,7 @@ async function refreshDeliv(){
     DV = remember('deliv', d); if (changed) redraw(DVIEW ? renderDO : renderDeliv);
   } catch(e){}
 }
+function setDV(d){ if (d && d.items) DV = remember('deliv', d); DVIEW = null; renderDeliv(); }   // action reply already carries the fresh list
 async function reloadDeliv(){ try { DV = remember('deliv', await call('getDeliveries', PIN)); } catch(e){} DVIEW = null; renderDeliv(); }
 const isOwnerD = () => DV.side === 'OWNER';
 function senderOf(o){ return o.dir === 'JB' ? 'JJ' : 'BSD'; }
@@ -814,7 +824,7 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
 function newDO(mode){
   DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || ((i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0)).map(i => newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
+  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || ((i.stock || i.jj) && (i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0))   /* only items Jinjang supplies (TransferItems / Stock tab) – not Soya, Sugar Cane etc. from other suppliers */.map(i => newLine(i, true, true)) : [];   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -862,7 +872,7 @@ async function submitNew(){
   if (!send.length) { toast(T('addSome')); return; }
   if (DVIEW.mode === 'send') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
   const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
-  try { const mode = DVIEW.mode, id = await call('createDelivery', PIN, mode, send, DNOTE.trim()); toast(T('createdOk', id)); await reloadDeliv();
+  try { const mode = DVIEW.mode, res = await call('delivAct', PIN, 'createDelivery', mode, send, DNOTE.trim()), id = res.r; toast(T('createdOk', id)); setDV(res.deliv);
         offerNotice(id, mode === 'request' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : 'back'); }
   catch(e){ b.disabled = false; renderNew(); toast(String(e.message||e)); }
 }
@@ -946,8 +956,8 @@ async function doAct(fn, recv, okMsg, later){
     }
   }
   const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
-  try { const r = await call(fn, PIN, o.id, lines, !!later); if (r && r.follow) FOLLOW[o.id] = r.follow;
-        toast(T(okMsg)); await reloadDeliv();
+  try { const res = await call('delivAct', PIN, fn, o.id, lines, !!later), r = res.r; if (r && r.follow) FOLLOW[o.id] = r.follow;
+        toast(T(okMsg)); setDV(res.deliv);
         if (!recv) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'sent'); }
   catch(e){ toast(String(e.message||e)); b.disabled = false; b.textContent = T(recv ? 'markRecv' : 'markSent'); }
 }
@@ -984,8 +994,7 @@ async function doCancel(){
   const id = DVIEW.id;
   if (CANCEL_ARMED !== id) { CANCEL_ARMED = id; toast(T('cancelDO') + ' ?'); const b = [...document.querySelectorAll('.dbtns .btn')].pop(); if (b) b.textContent = T('cancelDO') + ' ✓'; return; }
   CANCEL_ARMED = '';
-  try { await call('cancelDelivery', PIN, id); toast(T('cancelled')); } catch(e){ toast(String(e.message||e)); }
-  await reloadDeliv();
+  try { const res = await call('delivAct', PIN, 'cancelDelivery', id); toast(T('cancelled')); setDV(res.deliv); } catch(e){ toast(String(e.message||e)); await reloadDeliv(); }
 }
 // ---------- Owner statement ----------
 function ymOf(back){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - back); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
