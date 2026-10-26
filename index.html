@@ -964,18 +964,18 @@ async function doAct(fn, recv, okMsg, later){
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
 // ---------- WhatsApp notice to the other side (language set per receiver in the Notify tab) ----------
-const UNIT_ZH = { box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'盘', carton:'箱', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个' };
+const UNIT_ZH = { box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个' };
 function noticeText(o, kind, lang){
   const one = (zh) => o.lines.map(l => {
     const nm = zh ? (l.zh || l.name) : l.name, u = zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit;
     const q = kind === 'sent' || kind === 'back' ? l.sent : l.req, kg = (kind === 'sent' || kind === 'back') && l.sentKg !== '' ? (zh ? `（${l.sentKg}公斤）` : ` (${l.sentKg} kg)`) : '';
     if (q === '' || q === undefined) return l.decide ? `${nm}${zh ? '（增江决定数量）' : ' (Jinjang decides)'}` : '';
     if (kind === 'sent' && Number(q) === 0) return '';   // not sent → listed under "will send later" or simply left out
-    return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).filter(Boolean).join(zh ? '，' : ', ');
+    return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).filter(Boolean).map(x => '\n• ' + x).join('');   /* one item per line */
   const fo = kind === 'sent' && FOLLOW[o.id] && DV.list.find(x => x.id === FOLLOW[o.id]);
-  const fl = (zh) => fo ? (zh ? `\n⏳ 没货，稍后补送（${fo.id}）：` : `\n⏳ No stock, will send later (${fo.id}): `) + fo.lines.map(l => (zh ? (l.zh || l.name) : l.name) + ' ' + l.req + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join(zh ? '，' : ', ') : '';
-  const zh = `${{ new:'🛒 新订单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}：${one(true)}${fl(true)}${o.note ? '\n备注：' + o.note : ''}\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
-  const en = `${{ new:'🛒 New order', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}: ${one(false)}${fl(false)}${o.note ? '\nNote: ' + o.note : ''}\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please confirm in the app when sent'}`;
+  const fl = (zh) => fo ? (zh ? `\n\n⏳ 没货，稍后补送（${fo.id}）：` : `\n\n⏳ No stock, will send later (${fo.id}):`) + fo.lines.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + l.req + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
+  const zh = `${{ new:'🛒 新订单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
+  const en = `${{ new:'🛒 New order', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please confirm in the app when sent'}`;
   return lang === 'en' ? en : lang === 'both' ? zh + '\n\n' + en : zh;
 }
 function offerNotice(id, to, kind){
