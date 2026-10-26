@@ -367,7 +367,7 @@ async function goJJOrder(){
     if (DATA && DATA.items) DATA.items.forEach(x => { const d = DV.items.find(y => y.id === x.id && !y.stock); if (d && x.qty !== '' && x.qty !== undefined) d.onHand = Number(x.qty); });
     newDO('order');
     (async () => { for (let t = 0; t < 40 && JSON.parse(store.get('xym_pending')||'[]').length; t++) { flush(); await new Promise(r => setTimeout(r, 500)); }
-      try { const d = await call('getDeliveries', PIN); if (d && d.items) DV = remember('deliv', d); } catch(e){} })();
+      try { const d = await call('getDeliveries', PIN); if (d && d.items && !DPEND) DV = remember('deliv', d); } catch(e){} })();
     return;
   }
   DVIEW = { kind:'wait' };
@@ -658,15 +658,15 @@ applyStatic();
 // Owner: load the other tabs in the background so switching tabs is instant
 function prefetchOwner(){
   // one combined call, a moment after the first screen is up (so it never slows the opening)
-  setTimeout(() => call('getOwnerBundle', PIN).then(b => { remember('order', b.orders); remember('me', b.me); remember('deliv', b.deliv);
-    if (MODE !== 'order') OD = b.orders; if (MODE !== 'month') MD = b.me; if (MODE !== 'deliv') DV = b.deliv; showBadge(); }).catch(()=>{}), 1500);
+  setTimeout(() => call('getOwnerBundle', PIN).then(b => { remember('order', b.orders); remember('me', b.me); if (!DPEND) remember('deliv', b.deliv);
+    if (MODE !== 'order') OD = b.orders; if (MODE !== 'month') MD = b.me; if (MODE !== 'deliv' && !DPEND) DV = b.deliv; showBadge(); }).catch(()=>{}), 1500);
 }
-function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') DV = d; showBadge(); }).catch(()=>{}), 1500); }
+function prefetchDeliv(){ setTimeout(() => call('getDeliveries', PIN).then(d => { if (DPEND) return; remember('deliv', d); if (MODE !== 'deliv') DV = d; showBadge(); }).catch(()=>{}), 1500); }
 // keep the red count on the Deliveries tab up to date while on other tabs
 function showBadge(){ const t = [...document.querySelectorAll('.tab')].find(x => (x.getAttribute('onclick')||'').includes("'deliv'")); if (t) t.innerHTML = T('deliv') + delivBadge(); }
 let BADGE_TICK = 0;
 function badgeRefresh(){ if (MODE === 'deliv' || !canDeliv() || curUser().role === 'Jinjang' || false) return;
-  call('getDeliveries', PIN).then(d => { remember('deliv', d); if (MODE !== 'deliv') { DV = d; showBadge(); } }).catch(()=>{}); }
+  call('getDeliveries', PIN).then(d => { if (DPEND) return; remember('deliv', d); if (MODE !== 'deliv') { DV = d; showBadge(); } }).catch(()=>{}); }
 async function loadOrders(){
   MODE = 'order';
   if (!OD) OD = recall('order');
@@ -745,7 +745,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock for some items', shortTx:'Send what you have now. The missing amount goes into a new order by itself, so BSD does not need to ask again.', shortL:(a,b)=>`asked ${a}, sending ${b}`, shortYes:'Send now – rest later', shortNo:'Send now – rest not needed' });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock for some items', shortTx:'Send what you have now. The missing amount goes into a new order by itself, so BSD does not need to ask again.', shortL:(a,b)=>`asked ${a}, sending ${b}`, shortYes:'Send now – rest later', shortNo:'Send now – rest not needed', saving:'saving…', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -755,7 +755,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'有些货不够', shortTx:'先送有的货。缺的数量会自动开一张新单，BSD 不用再下单。', shortL:(a,b)=>`要 ${a}，送 ${b}`, shortYes:'先送 – 缺的稍后补', shortNo:'先送 – 缺的不用补' });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'有些货不够', shortTx:'先送有的货。缺的数量会自动开一张新单，BSD 不用再下单。', shortL:(a,b)=>`要 ${a}，送 ${b}`, shortYes:'先送 – 缺的稍后补', shortNo:'先送 – 缺的不用补', saving:'保存中…', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -773,9 +773,9 @@ async function loadDeliv(){
 // also refreshes an open delivery (e.g. waiting for Jinjang to send) as long as nothing has been typed in it
 const doClean = () => DVIEW && DVIEW.kind === 'do' && !Object.keys(DVIEW.q || {}).length && !Object.keys(DVIEW.k || {}).length && !(DVIEW.extra || []).length;
 async function refreshDeliv(){
-  if (!DV || (DVIEW && !doClean())) return;
+  if (!DV || DPEND || (DVIEW && !doClean())) return;
   try { const d = await call('getDeliveries', PIN);
-    if (MODE!=='deliv' || (DVIEW && !doClean()) || busy()) return;
+    if (MODE!=='deliv' || DPEND || (DVIEW && !doClean()) || busy()) return;
     const changed = JSON.stringify(d.list) !== JSON.stringify(DV.list);
     DV = remember('deliv', d); if (changed) redraw(DVIEW ? renderDO : renderDeliv);
   } catch(e){}
@@ -785,10 +785,10 @@ async function reloadDeliv(){ try { DV = remember('deliv', await call('getDelive
 const isOwnerD = () => DV.side === 'OWNER';
 function senderOf(o){ return o.dir === 'JB' ? 'JJ' : 'BSD'; }
 function receiverOf(o){ return o.dir === 'JB' ? 'BSD' : 'JJ'; }
-function canSend(o){ return o.status === 'Requested' && (isOwnerD() || DV.side === senderOf(o)); }
-function canRecv(o){ return o.status === 'Sent' && (isOwnerD() || DV.side === receiverOf(o)); }
-function canCancel(o){ return (o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o))) || (o.status === 'Sent' && isOwnerD()); }
-function stName(s){ return T('s' + s) || s; }
+function canSend(o){ return !o.pending && o.status === 'Requested' && (isOwnerD() || DV.side === senderOf(o)); }
+function canRecv(o){ return !o.pending && o.status === 'Sent' && (isOwnerD() || DV.side === receiverOf(o)); }
+function canCancel(o){ return !o.pending && (o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o))) || (o.status === 'Sent' && isOwnerD()); }
+function stName(s, o){ return (T('s' + s) || s) + (o && o.pending ? ' · ' + T('saving') : ''); }
 function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.name) + ((zh ? l.name : l.zh) ? ` <span class="sub">${esc(zh ? (l.zh ? l.name : '') : l.zh)}</span>` : ''); }
 function dHeader(title){
   const u = curUser(), who = u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area);
@@ -814,7 +814,7 @@ function doRow(o, hot){
   const n = o.lines.length, t = o.status === 'Received' ? o.receivedAt : o.status === 'Sent' ? o.sentAt : o.createdAt;
   return `<div class="row drow" onclick="openDO('${esc(o.id)}')"><div class="info">
     <div class="name" style="color:${hot?'var(--brand)':'var(--ink)'}">${esc(o.id)} · ${T('d'+o.dir)}</div>
-    <div class="meta">${stName(o.status)} · ${esc(t)} · ${T('items', n)} · ${T('by')} ${esc(areaName(o.createdBy))}${o.note?' · '+esc(o.note):''}</div></div><span class="sub">›</span></div>`;
+    <div class="meta">${stName(o.status, o)} · ${esc(t)} · ${T('items', n)} · ${T('by')} ${esc(areaName(o.createdBy))}${o.note?' · '+esc(o.note):''}</div></div><span class="sub">›</span></div>`;
 }
 // ---------- Quantity inputs: weighed items get a second box for the total kg ----------
 function qtyBox(attr, unit, v, ph){ return `<label class="qin"><input class="qty sm" inputmode="decimal" ${attr} value="${esc(v)}" placeholder="${ph || '–'}"><span>${esc(unit)}</span></label>`; }
@@ -871,10 +871,34 @@ async function submitNew(){
     .map(l => ({ id:l.id, qty: jjBlank(l) ? '' : Number(l.qty), kg: l.kg === '' ? '' : Number(l.kg), decide: jjBlank(l) }));
   if (!send.length) { toast(T('addSome')); return; }
   if (DVIEW.mode === 'send') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
-  const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
-  try { const mode = DVIEW.mode, res = await call('delivAct', PIN, 'createDelivery', mode, send, DNOTE.trim()), id = res.r; toast(T('createdOk', id)); setDV(res.deliv);
-        offerNotice(id, mode === 'request' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : 'back'); }
-  catch(e){ b.disabled = false; renderNew(); toast(String(e.message||e)); }
+  // shows at once (number guessed = next number); the server saves in the background
+  const mode = DVIEW.mode, note = DNOTE.trim(), keep = DLINES, id = nextLocalId(), now = hhmm(), u = curUser(), sent = mode === 'send';
+  const o = { id, dir: mode === 'order' ? 'JB' : 'BJ', status: sent ? 'Sent' : 'Requested', note, createdBy: u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area),
+    createdAt: now, sentAt: sent ? now : '', receivedAt: '', pending: true,
+    lines: send.map((x, k) => { const L = DLINES.find(l => l.id === x.id) || {};
+      return { line: id + '-' + (k + 1), id: x.id, name: L.name, zh: L.zh, unit: L.unit, wt: L.wt, req: sent || x.decide ? '' : x.qty, sent: sent ? x.qty : '', recv: '', added: false,
+        sentKg: sent && L.wt ? x.kg : '', recvKg: '', decide: !!x.decide }; }) };
+  DV.list.unshift(o); remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T('createdOk', id));
+  offerNotice(id, mode === 'request' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : 'back');
+  bgAct('createDelivery', () => [mode, send, note], r => { if (r && r !== id) { IDMAP[id] = r; toast(T('idChanged', id, r)); } },
+    e => { DV.list = DV.list.filter(x => x !== o); remember('deliv', DV); closeSum(); DLINES = keep; DNOTE = note; DVIEW = { kind:'new', mode }; if (MODE === 'deliv') renderNew(); toast(T('notSaved') + ' ' + String(e.message||e)); });
+}
+// ---------- Background saving: actions show at once, the server catches up (one at a time, in order) ----------
+let DPEND = 0, DQ = Promise.resolve();
+const IDMAP = {};   // guessed DO number → real one (only if someone else made an order at the same moment)
+function nextLocalId(){ let n = 0; DV.list.forEach(o => { const m = String(IDMAP[o.id] || o.id).match(/(\d+)$/); if (m) n = Math.max(n, Number(m[1])); }); return 'DO-' + String(n + 1).padStart(4, '0'); }
+function bgAct(fn, args, done, undo){
+  DPEND++;
+  DQ = DQ.then(async () => {
+    try { const res = await call('delivAct', PIN, fn, ...args()); if (done) done(res.r);
+      if (DPEND === 1 && res.deliv && res.deliv.items) {   // last one waiting → take the server's list
+        DV = remember('deliv', res.deliv);
+        if (DVIEW && DVIEW.kind === 'do' && IDMAP[DVIEW.id]) DVIEW.id = IDMAP[DVIEW.id];
+        if (MODE === 'deliv' && !busy() && (!DVIEW || doClean())) redraw(DVIEW ? renderDO : renderDeliv);
+        showBadge(); }
+    } catch(e){ if (undo) undo(e); else toast(String(e.message||e)); }
+    finally { DPEND--; }
+  });
 }
 // ---------- Item picker (whole list, A–Z, scrolls inside the sheet) ----------
 function openPick(){
@@ -919,7 +943,7 @@ function renderDO(){
       <div class="meta">${l.wt ? T('weighed') : esc(l.unit)} · <a href="#" onclick="DVIEW.extra.splice(${k},1);renderDO();return false">${T('remove')}</a></div></div>
       <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty)}${l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('');
   const total = own && o.status === 'Received' ? o.lines.reduce((a, l) => a + (Number(l.amount)||0), 0) : null;
-  const info = [stName(o.status), `${T('by')} ${esc(areaName(o.createdBy))} ${esc(o.createdAt)}`, o.sentAt ? `${T('sentAt')} ${esc(o.sentAt)}` : '', o.receivedAt ? `${T('sReceived')} ${esc(o.receivedAt)}` : ''].filter(Boolean).join(' · ');
+  const info = [stName(o.status, o), `${T('by')} ${esc(areaName(o.createdBy))} ${esc(o.createdAt)}`, o.sentAt ? `${T('sentAt')} ${esc(o.sentAt)}` : '', o.receivedAt ? `${T('sReceived')} ${esc(o.receivedAt)}` : ''].filter(Boolean).join(' · ');
   const act = send ? `<button class="btn save" id="dsub" onclick="doSend()">${T('markSent')}</button>` : recv ? `<button class="btn save" id="dsub" onclick="doRecv()">${T('markRecv')}</button>` : '';
   $('#app').innerHTML = dHeader(`${esc(o.id)} · ${T('d'+o.dir)}`) +
     `<div class="dbtns"><button class="btn ghost" onclick="DVIEW=null;renderDeliv()">${T('back')}</button>${send ? `<button class="btn ghost" onclick="openPick()">${T('addItem')}</button>` : ''}${canCancel(o) ? `<button class="btn ghost" style="color:var(--red)" onclick="doCancel()">${T('cancelDO')}</button>` : ''}</div>
@@ -955,11 +979,23 @@ async function doAct(fn, recv, okMsg, later){
       $('#sum').classList.add('show'); return;
     }
   }
-  const b = $('#dsub'); b.disabled = true; b.textContent = T('working');
-  try { const res = await call('delivAct', PIN, fn, o.id, lines, !!later), r = res.r; if (r && r.follow) FOLLOW[o.id] = r.follow;
-        toast(T(okMsg)); setDV(res.deliv);
-        if (!recv) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'sent'); }
-  catch(e){ toast(String(e.message||e)); b.disabled = false; b.textContent = T(recv ? 'markRecv' : 'markSent'); }
+  const snap = JSON.stringify(o), now = hhmm(), extra = DVIEW.extra;
+  lines.forEach(x => { const l = x.line && o.lines.find(y => y.line === x.line); if (!l) return;
+    if (recv) { l.recv = x.qty; if (l.wt) l.recvKg = x.kg; } else { l.sent = x.qty; if (l.wt) l.sentKg = x.kg; } });
+  extra.forEach((x, k) => o.lines.push({ line: o.id + '-' + (o.lines.length + 1), id: x.id, name: x.name, zh: x.zh, unit: x.unit, wt: x.wt, req: '', sent: Number(x.qty) || 0, recv: '', added: true, sentKg: x.wt ? x.kg : '', recvKg: '', decide: false }));
+  o.status = recv ? 'Received' : 'Sent'; if (recv) o.receivedAt = now; else o.sentAt = now; o.pending = true;
+  let fo = null;
+  if (!recv && later && o.dir === 'JB') {   // what was short goes into a follow-up order
+    const sh = o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req));
+    if (sh.length) { const fid = nextLocalId();
+      fo = { id: fid, dir: 'JB', status: 'Requested', note: 'Follow-up of ' + o.id + ' / 补送 ' + o.id, createdBy: o.createdBy, createdAt: now, sentAt: '', receivedAt: '', pending: true,
+        lines: sh.map((l, k) => ({ line: fid + '-' + (k + 1), id: l.id, name: l.name, zh: l.zh, unit: l.unit, wt: l.wt, req: Math.round((Number(l.req) - (Number(l.sent) || 0)) * 1000) / 1000, sent: '', recv: '', added: false, sentKg: '', recvKg: '', decide: false })) };
+      DV.list.unshift(fo); FOLLOW[o.id] = fid; } }
+  remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T(okMsg));
+  if (!recv) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'sent');
+  bgAct(fn, () => [IDMAP[o.id] || o.id, lines, !!later], r => { if (fo && r && r.follow && r.follow !== fo.id) IDMAP[fo.id] = r.follow; },
+    e => { const i = DV.list.indexOf(o); if (i >= 0) DV.list[i] = JSON.parse(snap); if (fo) DV.list = DV.list.filter(x => x !== fo); remember('deliv', DV);
+      if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
@@ -994,7 +1030,9 @@ async function doCancel(){
   const id = DVIEW.id;
   if (CANCEL_ARMED !== id) { CANCEL_ARMED = id; toast(T('cancelDO') + ' ?'); const b = [...document.querySelectorAll('.dbtns .btn')].pop(); if (b) b.textContent = T('cancelDO') + ' ✓'; return; }
   CANCEL_ARMED = '';
-  try { const res = await call('delivAct', PIN, 'cancelDelivery', id); toast(T('cancelled')); setDV(res.deliv); } catch(e){ toast(String(e.message||e)); await reloadDeliv(); }
+  const o = DV.list.find(x => x.id === id), prev = o.status;
+  o.status = 'Cancelled'; o.pending = true; remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T('cancelled'));
+  bgAct('cancelDelivery', () => [IDMAP[id] || id], null, e => { o.status = prev; delete o.pending; remember('deliv', DV); if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
 // ---------- Owner statement ----------
 function ymOf(back){ const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - back); return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0'); }
@@ -1225,7 +1263,7 @@ async function stockOrder(){
   SK.items.forEach(x => { const d = DV.items.find(y => y.id === x.id); if (d) Object.assign(d, { onHand: x.qty, min: x.min, rq: x.rq, par: x.par, smin: x.smin, sq: x.sq, spar: x.spar }); });
   if (DATA && DATA.items) DATA.items.forEach(x => { const d = DV.items.find(y => y.id === x.id && !y.stock); if (d && x.qty !== '' && x.qty !== undefined) d.onHand = Number(x.qty); });
   MODE_SET = 'deliv'; MODE = 'deliv'; newDO('order');
-  pend.then(() => call('getDeliveries', PIN)).then(d => { if (d && d.items) DV = remember('deliv', d); }).catch(() => {});
+  pend.then(() => call('getDeliveries', PIN)).then(d => { if (d && d.items && !DPEND) DV = remember('deliv', d); }).catch(() => {});
 }
 // Save count: shows as saved at once; the server save runs in the background (numbers come back if it fails)
 let SCOUNT = null;
