@@ -144,6 +144,9 @@
   .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
   .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
 .lgh{padding:10px 14px 4px;font-size:13px;font-weight:700;color:var(--brand);background:transparent}
+.robar{margin:6px 14px 0;padding:6px 10px;border-radius:8px;background:#eef3fb;color:#2b4c7e;font-size:13px;font-weight:600;text-align:center}
+body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.clear, body.ro .lvl, body.ro .bin { display:none !important; }
+body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
 </style>
 </head>
 <body>
@@ -275,7 +278,7 @@ async function load(){
     DATA = await call('getDaily', PIN); EDITS = {}; USER = DATA.user; store.set('xym_role', DATA.user.role);
     if (DATA.user.role === 'Jinjang') return loadDeliv();
     if (MODE_SET === 'deliv' && canDeliv()) return loadDeliv();
-    if (DATA.me && DATA.me.active && MODE_SET !== 'daily') { MODE = 'month'; return loadME(); }
+    if (DATA.me && DATA.me.active && MODE_SET !== 'daily' && DATA.user.role !== 'Viewer') { MODE = 'month'; return loadME(); }
     if (DATA.user.role !== 'Owner') MODE = 'daily';
     JSON.parse(store.get('xym_pending')||'[]').forEach(c => {   // still-unsent counts stay visible
       const it = DATA.items.find(x => x.row===c.row); if (!it) return;
@@ -451,6 +454,8 @@ function curUser(){ return USER || (DATA && DATA.user) || (MD && MD.user) || (DV
 function canDeliv(){ const u = curUser(); return u.role === 'Owner' || u.role === 'Jinjang' || u.area === 'Kitchen'; }
 function tabsHtml(){
   const u = curUser(), b = (m, t) => `<button class="tab ${MODE===m?'on':''}" onclick="setMode('${m}')">${t}</button>`;
+  document.body.classList.toggle('ro', u.role === 'Viewer');   // view-only account: nothing can be typed or tapped to change
+  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
   if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}</div>`;
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
     const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active);
@@ -747,7 +752,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -757,7 +762,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -787,9 +792,9 @@ async function reloadDeliv(){ try { DV = remember('deliv', await call('getDelive
 const isOwnerD = () => DV.side === 'OWNER';
 function senderOf(o){ return o.dir === 'JB' ? 'JJ' : 'BSD'; }
 function receiverOf(o){ return o.dir === 'JB' ? 'BSD' : 'JJ'; }
-function canSend(o){ return !o.pending && o.status === 'Requested' && (isOwnerD() || DV.side === senderOf(o)); }
-function canRecv(o){ return !o.pending && o.status === 'Sent' && (isOwnerD() || DV.side === receiverOf(o)); }
-function canCancel(o){ return !o.pending && (o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o))) || (o.status === 'Sent' && isOwnerD()); }
+function canSend(o){ return DV.side !== 'VIEW' && !o.pending && o.status === 'Requested' && (isOwnerD() || DV.side === senderOf(o)); }
+function canRecv(o){ return DV.side !== 'VIEW' && !o.pending && o.status === 'Sent' && (isOwnerD() || DV.side === receiverOf(o)); }
+function canCancel(o){ return DV.side !== 'VIEW' && !o.pending && (o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o))) || (o.status === 'Sent' && isOwnerD()); }
 function stName(s, o){ const own = o && s === 'Requested' && DV && DV.side !== 'OWNER' && !canSend(o) && !o.pending;
   return (own ? T('sOrdered') : (T('s' + s) || s)) + (o && o.pending ? ' · ' + T('saving') : ''); }
 function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.name) + ((zh ? l.name : l.zh) ? ` <span class="sub">${esc(zh ? (l.zh ? l.name : '') : l.zh)}</span>` : ''); }
@@ -806,14 +811,14 @@ function renderDeliv(){
   const sendL = L.filter(canSend), recvL = L.filter(canRecv);
   const waitL = L.filter(o => (o.status === 'Requested' || o.status === 'Sent') && !canSend(o) && !canRecv(o));
   const doneL = L.filter(o => o.status === 'Received' || o.status === 'Cancelled');
-  const btns = (side === 'JJ' ? [['request', T('newReq')]] : [['order', T('newOrder')], ['send', T('newSend')]])
+  const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['request', T('newReq')]] : [['order', T('newOrder')], ['send', T('newSend')]])
     .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('');
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
   const done = doneL.length ? `<div class="group" style="cursor:pointer" onclick="DONE_OPEN=!DONE_OPEN;redraw(renderDeliv)">${DONE_OPEN ? '▾' : '▸'} ${T('done')} · ${doneL.length} <span class="sub">${T(DONE_OPEN ? 'tapHide' : 'tapShow')}</span></div>`
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
   const body = sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
-    `<div class="dbtns">${btns}${isOwnerD() ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}<button class="btn ghost" style="flex:none;min-width:52px" onclick="toast(T('working'));reloadDeliv()">↻</button></div>` +
+    `<div class="dbtns">${btns}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}<button class="btn ghost" style="flex:none;min-width:52px" onclick="toast(T('working'));reloadDeliv()">↻</button></div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
 }
 function doRow(o, hot){
@@ -989,7 +994,7 @@ function pickItem(id){
 function openDO(id){ DVIEW = { kind:'do', id, extra:[], q:{}, k:{} }; renderDeliv(); window.scrollTo(0, 0); }
 function renderDO(){
   const o = DV.list.find(x => x.id === DVIEW.id); if (!o) { DVIEW = null; return renderDeliv(); }
-  const send = canSend(o), recv = canRecv(o), own = isOwnerD();
+  const send = canSend(o), recv = canRecv(o), own = isOwnerD() || DV.side === 'VIEW';
   const rows = o.lines.map(l => {
     const base = send ? l.req : recv ? l.sent : '', baseKg = recv ? l.sentKg : '';
     const v = l.line in DVIEW.q ? DVIEW.q[l.line] : base, vk = l.line in DVIEW.k ? DVIEW.k[l.line] : baseKg;
