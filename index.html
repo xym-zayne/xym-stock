@@ -370,7 +370,7 @@ async function goJJOrder(){
   if (!DV) DV = recall('deliv');
   if (DV && DV.items) {   // open at once from the numbers on the phone (today's daily count merged in); saving + refresh run in the background
     if (DATA && DATA.items) DATA.items.forEach(x => { const d = DV.items.find(y => y.id === x.id && !y.stock); if (d && x.qty !== '' && x.qty !== undefined) d.onHand = Number(x.qty); });
-    newDO('order');
+    newDO('order', true);
     (async () => { for (let t = 0; t < 40 && JSON.parse(store.get('xym_pending')||'[]').length; t++) { flush(); await new Promise(r => setTimeout(r, 500)); }
       try { const d = await call('getDeliveries', PIN); if (d && d.items && !DPEND) DV = remember('deliv', d); } catch(e){} })();
     return;
@@ -380,7 +380,7 @@ async function goJJOrder(){
   for (let t = 0; t < 40 && JSON.parse(store.get('xym_pending')||'[]').length; t++) { flush(); await new Promise(r => setTimeout(r, 500)); }
   try { DV = remember('deliv', await call('getDeliveries', PIN)); } catch(e){ if (!DV) DV = recall('deliv'); }
   if (!DV) { DVIEW = null; return loadDeliv(); }
-  newDO('order');
+  newDO('order', true);
 }
 
 // Background sender: keeps unsent counts on the phone and retries until the server has them
@@ -833,9 +833,10 @@ function kgBox(attr, v){ return `<label class="qin"><input class="qty sm kg" inp
 function fmtQ(q, unit, kg){ return `${esc(q)} ${esc(unit)}${kg!=='' && kg!==undefined && kg!==null ? ` (${esc(kg)} kg)` : ''}`; }
 const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 // ---------- New order / request / send ----------
-function newDO(mode){
-  DVIEW = { kind:'new', mode }; DNOTE = '';
-  DLINES = mode === 'order' ? DV.items.filter(i => i.dj || ((i.stock || i.jj) && (i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0))   /* only items Jinjang supplies (TransferItems / Stock tab) – not Soya, Sugar Cane etc. from other suppliers */.map(i => newLine(i, true, true)).filter(l => l.qty !== '0') : [];   /* nothing needed (0) → not shown */   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
+// auto = true: filled from today's counts (after the daily count / Stock-tab Order). The Deliveries-tab button starts blank.
+function newDO(mode, auto){
+  DVIEW = { kind:'new', mode, auto: !!auto }; DNOTE = '';
+  DLINES = mode === 'order' && auto ? DV.items.filter(i => i.dj || ((i.stock || i.jj) && (i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0))   /* only items Jinjang supplies (TransferItems / Stock tab) – not Soya, Sugar Cane etc. from other suppliers */.map(i => newLine(i, true, true)).filter(l => l.qty !== '0') : [];   /* nothing needed (0) → not shown */   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -874,7 +875,7 @@ function renderNew(){
     ${withKg && DLINES.some(l => l.wt) ? `<div class="cmeta" style="padding:8px 14px 0"><b>${T('weighHint')}</b></div>` : ''}${m==='order' ? `<div class="cmeta" style="padding:8px 14px 0"><b>${T('blankHint')}</b></div>` : ''}
     <div class="list" style="margin-top:10px">${DLINES.map((l, k) => `${many && (k === 0 || lineGrp(DLINES[k-1].id) !== lineGrp(l.id)) ? `<div class="lgh">${esc(grpLabel(lineGrp(l.id), LANG === 'zh'))}</div>` : ''}<div class="row"><div class="info"><div class="name">${lineName(l)}</div>
       <div class="meta">${m==='order' ? stockInfo(l.info) : (l.wt ? T('weighed') : esc(l.unit))}${m!=='order' || !DV.items.find(i => i.id===l.id && i.def) ? ` · <a href="#" onclick="DLINES.splice(${k},1);renderNew();return false">${T('remove')}</a>` : ''}</div></div>
-      <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty, m==='order' ? T('jjPh') : '')}${withKg && l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('') || `<div class="empty">${T(m==='order' ? 'nothingNeed' : 'addSome')}</div>`}</div>
+      <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty, m==='order' ? T('jjPh') : '')}${withKg && l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('') || `<div class="empty">${T(m==='order' && DVIEW.auto ? 'nothingNeed' : 'addSome')}</div>`}</div>
     <div class="tools"><input id="dnote" placeholder="${T('note')}" value="${esc(DNOTE)}"></div><div class="spacer"></div>
     <footer><div class="prog" id="prog"></div><button class="btn save" id="dsub" onclick="submitNew()">${T(m==='order'?'submitOrder':m==='request'?'submitReq':'submitSend')}</button></footer>`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => { DLINES[e.target.dataset.k][e.target.dataset.f] = e.target.value.trim(); footNew(); }));
@@ -1237,18 +1238,20 @@ function showUndo(text, fn){
   el.classList.add('show'); clearTimeout(UNDO); UNDO = setTimeout(() => el.classList.remove('show'), 6000);
 }
 // ---------- Stock tab: counted every few days, 2 groups (Jinjang / Noodle) – all from Jinjang ----------
-Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', gJinjang:'Jinjang-made', gBought:'Bought-in', gNoodle:'Noodle', gDaily:'Daily', gOther:'Other',
+Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', gJJ:'Jinjang', gJinjang:'Jinjang-made', gBought:'Bought-in', gNoodle:'Noodle', gDaily:'Daily', gOther:'Other',
   stockHelp:'Count only UNOPENED boxes / bags. Open a new one → tap −1. Every 3–5 days check and type the real number, then Save. Jinjang deliveries are added by themselves.',
   orderN:n=>n?`Order (${n})`:'Order', needN:(q,u)=>`order ${q} ${u}`, addStock:'+ Add item', addedTo:(n,g)=>`${n} → ${g}`,
   use1:'−1', usedOk:(n,q,u)=>`${n}: −1 → ${q} ${u} left`, checkedAgo:(d)=>d===0?'checked today':`checked ${d} day${d===1?'':'s'} ago`, neverChecked:'never checked', saveCheck:n=>n?`Save count (${n})`:'Save count', stockSaved:n=>`Saved ${n} ✓`, left:'left', noStock:'No items here yet' });
-Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', gJinjang:'增江自制', gBought:'外购', gNoodle:'面', gDaily:'每日', gOther:'其他',
+Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', gJJ:'增江', gJinjang:'增江自制', gBought:'外购', gNoodle:'面', gDaily:'每日', gOther:'其他',
   stockHelp:'只点还没开的箱 / 包。开新的一箱/一包 → 按 −1。每 3–5 天点一次，填实际数量再按保存。增江送来的货会自动加上。',
   orderN:n=>n?`订货 (${n})`:'订货', needN:(q,u)=>`订 ${q} ${u}`, addStock:'+ 加货品', addedTo:(n,g)=>`${n} → ${g}`,
   use1:'−1', usedOk:(n,q,u)=>`${n}：−1 → 剩 ${q} ${u}`, checkedAgo:(d)=>d===0?'今天点过':`${d} 天前点过`, neverChecked:'还没点过', saveCheck:n=>n?`保存数量 (${n})`:'保存数量', stockSaved:n=>`已保存 ${n} 项 ✓`, left:'剩', noStock:'这里还没有货品' });
 let SK = null, SEDITS = {}, SGRP = 'Jinjang';
 try { SGRP = localStorage.getItem('xym_sgrp') || 'Jinjang'; } catch(e){}
-const SGROUPS = ['Jinjang', 'Bought', 'Noodle'];   // Jinjang = made by Jinjang · Bought = bought in from other suppliers
+const SGROUPS = ['Jinjang', 'Noodle'];   // pages. The Jinjang page shows 2 sections: Jinjang-made (Jinjang) + Bought-in (Bought)
 const grpOf = i => i.grp === 'Noodle' ? 'Noodle' : i.grp === 'Bought' ? 'Bought' : 'Jinjang';
+const pageOf = i => grpOf(i) === 'Noodle' ? 'Noodle' : 'Jinjang';
+let ADDG = 'Jinjang';   // + Add item on the Jinjang page: into Jinjang-made or Bought-in
 const uName = u => LANG === 'zh' ? (UNIT_ZH[String(u).toLowerCase()] || u) : u;
 const isBoss = () => curUser().role === 'Owner' && !store.get('xym_owner');
 const stockNeed = i => i.qty === '' ? 0 : needQty(i.qty, i, true);
@@ -1267,8 +1270,9 @@ async function refreshStock(){
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
 function renderStock(){
   const u = curUser(), who = u.role === 'Owner' ? 'Owner' : u.area, boss = isBoss();
-  const items = SK.items.filter(i => grpOf(i) === SGRP), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
-  const rows = items.map(i => {
+  const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
+  const two = SGRP === 'Jinjang';
+  const rows = items.map((i, k) => (two && (k === 0 || grpOf(items[k-1]) !== grpOf(i)) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '') + (() => {
     const old = i.days === '' || i.days > 5, unit = esc(uName(i.unit)), nd = stockNeed(i);
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
       i.days === '' ? '' : `<span style="color:${old?'var(--red)':'var(--muted)'}">${T('checkedAgo', i.days)}</span>`,
@@ -1277,9 +1281,9 @@ function renderStock(){
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
     return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div></div>
       <button class="btn ghost use1" onclick="useOne('${esc(i.id)}')">${T('use1')}</button>
-      <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`); }).join('');
-  const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => grpOf(i) === g && stockNeed(i) > 0).length;
-    return `<button class="chip ${g===SGRP?'on':''}" onclick="setSGrp('${g}')">${T('g'+g)}${n ? ` <span class="badge">${n}</span>` : ''}</button>`; }).join('')}</div>`;
+      <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`); })()).join('');
+  const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => pageOf(i) === g && stockNeed(i) > 0).length;
+    return `<button class="chip ${g===SGRP?'on':''}" onclick="setSGrp('${g}')">${T(g === 'Jinjang' ? 'gJJ' : 'g'+g)}${n ? ` <span class="badge">${n}</span>` : ''}</button>`; }).join('')}</div>`;
   $('#app').innerHTML = `<header><h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(who))} · ${esc(SK.today)}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
     ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
@@ -1297,7 +1301,9 @@ async function moveStock(id, g){
   catch(e){ toast(String(e.message||e)); }
 }
 function openAddStock(){
-  $('#sTitle').textContent = T('addStock') + ' → ' + T('g'+SGRP); $('#sText').innerHTML = `<input id="pq" class="pq" placeholder="${T('search')}">`;
+  if (SGRP !== 'Jinjang') ADDG = SGRP; else if (ADDG === 'Noodle') ADDG = 'Jinjang';
+  const pick = SGRP === 'Jinjang' ? `<div class="chips" style="padding:0 0 8px">${['Jinjang','Bought'].map(g => `<button class="chip ${g===ADDG?'on':''}" onclick="ADDG='${g}';openAddStock()">${T('g'+g)}</button>`).join('')}</div>` : '';
+  $('#sTitle').textContent = T('addStock') + ' → ' + T('g'+ADDG); $('#sText').innerHTML = `${pick}<input id="pq" class="pq" placeholder="${T('search')}">`;
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closePick()">${T('close')}</button>`;
   $('#sum').classList.add('show', 'picker'); drawAddStock('');
   $('#pq').addEventListener('input', e => drawAddStock(e.target.value));
@@ -1305,7 +1311,7 @@ function openAddStock(){
 function drawAddStock(q){
   q = q.toLowerCase();
   const list = (SK.more || []).filter(i => !q || (i.name+' '+i.zh+' '+i.id).toLowerCase().includes(q));
-  $('#sList').innerHTML = list.map(i => `<div class="srow pick" onclick="moveStock('${esc(i.id)}','${SGRP}')"><span>${lineName(i)}</span><b class="sub">${esc(uName(i.unit))}</b></div>`).join('') || `<div class="empty">${T('noItems')}</div>`;
+  $('#sList').innerHTML = list.map(i => `<div class="srow pick" onclick="moveStock('${esc(i.id)}','${ADDG}')"><span>${lineName(i)}</span><b class="sub">${esc(uName(i.unit))}</b></div>`).join('') || `<div class="empty">${T('noItems')}</div>`;
 }
 // −1 shows at once; taps are collected and sent together in the background (no waiting on the server)
 let SUSE = {}, SUSE_T = null, SUSE_BUSY = null;
@@ -1334,7 +1340,7 @@ async function stockOrder(){
   if (!DV) { const b = document.querySelector('footer .btn'); if (b) { b.disabled = true; b.textContent = T('working'); } await pend; return goJJOrder(); }
   SK.items.forEach(x => { const d = DV.items.find(y => y.id === x.id); if (d) Object.assign(d, { onHand: x.qty, min: x.min, rq: x.rq, par: x.par, smin: x.smin, sq: x.sq, spar: x.spar }); });
   if (DATA && DATA.items) DATA.items.forEach(x => { const d = DV.items.find(y => y.id === x.id && !y.stock); if (d && x.qty !== '' && x.qty !== undefined) d.onHand = Number(x.qty); });
-  MODE_SET = 'deliv'; MODE = 'deliv'; newDO('order');
+  MODE_SET = 'deliv'; MODE = 'deliv'; newDO('order', true);
   pend.then(() => call('getDeliveries', PIN)).then(d => { if (d && d.items && !DPEND) DV = remember('deliv', d); }).catch(() => {});
 }
 // Save count: shows as saved at once; the server save runs in the background (numbers come back if it fails)
