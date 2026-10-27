@@ -143,6 +143,7 @@
   .use1 { flex:none; min-width:0; padding:8px 12px; margin-right:8px; font-weight:700; }
   .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
   .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
+.lgh{padding:10px 14px 4px;font-size:13px;font-weight:700;color:var(--brand);background:transparent}
 </style>
 </head>
 <body>
@@ -854,12 +855,19 @@ function stockInfo(i){
   if (need !== '') parts.push(need > 0 ? `<b>${T('need')} ${+need.toFixed(2)} ${esc(cu)}</b>` : `<span class="ok">${T('enough')} ✓</span>`);
   return parts.join(' · ');
 }
+// group of an order line: Daily (Kitchen daily count) / Jinjang-made / Bought-in / Noodle / Other
+const GORD = ['Daily', 'Jinjang', 'Bought', 'Noodle', 'Other'];
+function lineGrp(id){ const i = DV && DV.items.find(x => x.id === id); if (!i) return 'Other';
+  if (i.stock) return i.sg === 'Noodle' ? 'Noodle' : i.sg === 'Bought' ? 'Bought' : 'Jinjang'; return i.dj ? 'Daily' : 'Other'; }
+const grpLabel = (g, zh) => (zh ? TXT.zh : TXT.en)['g' + g] || g;
 function renderNew(){
+  DLINES.sort((a, b) => GORD.indexOf(lineGrp(a.id)) - GORD.indexOf(lineGrp(b.id)));   // stable: keeps order inside a group
+  const many = new Set(DLINES.map(l => lineGrp(l.id))).size > 1;
   const m = DVIEW.mode, title = T(m==='order'?'newOrderT':m==='request'?'newReqT':'newSendT'), withKg = m === 'send';
   $('#app').innerHTML = dHeader(title) +
     `<div class="dbtns"><button class="btn ghost" onclick="DVIEW=null;renderDeliv()">${T('back')}</button><button class="btn ghost" onclick="openPick()">${T('addItem')}</button></div>
     ${withKg && DLINES.some(l => l.wt) ? `<div class="cmeta" style="padding:8px 14px 0"><b>${T('weighHint')}</b></div>` : ''}${m==='order' ? `<div class="cmeta" style="padding:8px 14px 0"><b>${T('blankHint')}</b></div>` : ''}
-    <div class="list" style="margin-top:10px">${DLINES.map((l, k) => `<div class="row"><div class="info"><div class="name">${lineName(l)}</div>
+    <div class="list" style="margin-top:10px">${DLINES.map((l, k) => `${many && (k === 0 || lineGrp(DLINES[k-1].id) !== lineGrp(l.id)) ? `<div class="lgh">${esc(grpLabel(lineGrp(l.id), LANG === 'zh'))}</div>` : ''}<div class="row"><div class="info"><div class="name">${lineName(l)}</div>
       <div class="meta">${m==='order' ? stockInfo(l.info) : (l.wt ? T('weighed') : esc(l.unit))}${m!=='order' || !DV.items.find(i => i.id===l.id && i.def) ? ` · <a href="#" onclick="DLINES.splice(${k},1);renderNew();return false">${T('remove')}</a>` : ''}</div></div>
       <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty, m==='order' ? T('jjPh') : '')}${withKg && l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('') || `<div class="empty">${T(m==='order' ? 'nothingNeed' : 'addSome')}</div>`}</div>
     <div class="tools"><input id="dnote" placeholder="${T('note')}" value="${esc(DNOTE)}"></div><div class="spacer"></div>
@@ -1056,12 +1064,15 @@ function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
 // ---------- WhatsApp notice to the other side (language set per receiver in the Notify tab) ----------
 const UNIT_ZH = { box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个' };
 function noticeText(o, kind, lang){
-  const one = (zh) => o.lines.map(l => {
+  const one = (zh) => { const ls = o.lines.slice().sort((a, b) => GORD.indexOf(lineGrp(a.id)) - GORD.indexOf(lineGrp(b.id)));
+    const many = new Set(ls.map(l => lineGrp(l.id))).size > 1; let last = '';
+    return ls.map(l => {
     const nm = zh ? (l.zh || l.name) : l.name, u = zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit;
     const q = kind === 'sent' || kind === 'back' ? l.sent : l.req, kg = (kind === 'sent' || kind === 'back') && l.sentKg !== '' ? (zh ? `（${l.sentKg}公斤）` : ` (${l.sentKg} kg)`) : '';
     if (q === '' || q === undefined) return l.decide ? `${nm}${zh ? '（增江决定数量）' : ' (Jinjang decides)'}` : '';
     if (kind === 'sent' && Number(q) === 0) return '';   // not sent → listed under "will send later" or simply left out
-    return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).filter(Boolean).map(x => '\n• ' + x).join('');   /* one item per line */
+    return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).map((x, k) => { if (!x) return '';
+      const g = lineGrp(ls[k].id), h = many && g !== last ? `\n\n【${grpLabel(g, zh)}】` : ''; last = g; return h + '\n• ' + x; }).join(''); };   /* one item per line, under group headings */
   const fo = kind === 'sent' && FOLLOW[o.id] && DV.list.find(x => x.id === FOLLOW[o.id]);
   const fl = (zh) => fo ? (zh ? `\n\n⏳ 缺货，后补（${fo.id}）：` : `\n\n⏳ No stock – later (${fo.id}):`) + fo.lines.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + l.req + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
   const zh = `${{ new:'🛒 新订单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
@@ -1168,8 +1179,9 @@ function lvItem(id){ return (SK && SK.items.find(x => x.id === id)) || (DATA && 
 function openLevels(id){
   const i = lvItem(id); if (!i) return; const L = i.lv || i, u = esc(uName(i.unit || String(i.uom || '').toLowerCase()));
   const f = (k, lab) => `<label class="lv">${lab}<span><input id="lv_${k}" class="qty sm" inputmode="decimal" value="${esc(nz(L[k]) ? L[k] : '')}"> ${u}</span></label>`;
-  // Saturday (weekend) levels only for noodles; Jinjang items use the same levels every day
-  const noodle = !!((SK && SK.items.find(x => x.id === id && x.grp === 'Noodle')) || (DV && DV.items.find(x => x.id === id && x.sg === 'Noodle')));
+  // Saturday (weekend) levels for noodles and daily-count items; Jinjang Stock items (made / bought) use the same levels every day
+  const noodle = !!((SK && SK.items.find(x => x.id === id && x.grp === 'Noodle')) || (DV && DV.items.find(x => x.id === id && (x.sg === 'Noodle' || x.dj)))
+    || (DATA && DATA.items && DATA.items.find(x => x.id === id)));
   $('#sTitle').textContent = T('lvTitle', itemName(i)); $('#sText').textContent = noodle ? T('lvNote') : T('lvNote1');
   $('#sList').innerHTML = noodle ? `<div class="lvh">${T('lvWd')}</div>${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}
     <div class="lvh">${T('lvSat')}</div>${f('smin', T('lvMin'))}${f('sq', T('lvRq'))}${f('spar', T('lvPar'))}`
@@ -1220,18 +1232,18 @@ function showUndo(text, fn){
   el.classList.add('show'); clearTimeout(UNDO); UNDO = setTimeout(() => el.classList.remove('show'), 6000);
 }
 // ---------- Stock tab: counted every few days, 2 groups (Jinjang / Noodle) – all from Jinjang ----------
-Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', gJinjang:'Jinjang', gNoodle:'Noodle',
+Object.assign(TXT.en, { stockTab:'Stock', stockTitle:'Stock (unopened)', gJinjang:'Jinjang-made', gBought:'Bought-in', gNoodle:'Noodle', gDaily:'Daily', gOther:'Other',
   stockHelp:'Count only UNOPENED boxes / bags. Open a new one → tap −1. Every 3–5 days check and type the real number, then Save. Jinjang deliveries are added by themselves.',
   orderN:n=>n?`Order (${n})`:'Order', needN:(q,u)=>`order ${q} ${u}`, addStock:'+ Add item', addedTo:(n,g)=>`${n} → ${g}`,
   use1:'−1', usedOk:(n,q,u)=>`${n}: −1 → ${q} ${u} left`, checkedAgo:(d)=>d===0?'checked today':`checked ${d} day${d===1?'':'s'} ago`, neverChecked:'never checked', saveCheck:n=>n?`Save count (${n})`:'Save count', stockSaved:n=>`Saved ${n} ✓`, left:'left', noStock:'No items here yet' });
-Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', gJinjang:'增江', gNoodle:'面',
+Object.assign(TXT.zh, { stockTab:'库存', stockTitle:'库存（未开封）', gJinjang:'增江自制', gBought:'外购', gNoodle:'面', gDaily:'每日', gOther:'其他',
   stockHelp:'只点还没开的箱 / 包。开新的一箱/一包 → 按 −1。每 3–5 天点一次，填实际数量再按保存。增江送来的货会自动加上。',
   orderN:n=>n?`订货 (${n})`:'订货', needN:(q,u)=>`订 ${q} ${u}`, addStock:'+ 加货品', addedTo:(n,g)=>`${n} → ${g}`,
   use1:'−1', usedOk:(n,q,u)=>`${n}：−1 → 剩 ${q} ${u}`, checkedAgo:(d)=>d===0?'今天点过':`${d} 天前点过`, neverChecked:'还没点过', saveCheck:n=>n?`保存数量 (${n})`:'保存数量', stockSaved:n=>`已保存 ${n} 项 ✓`, left:'剩', noStock:'这里还没有货品' });
 let SK = null, SEDITS = {}, SGRP = 'Jinjang';
 try { SGRP = localStorage.getItem('xym_sgrp') || 'Jinjang'; } catch(e){}
-const SGROUPS = ['Jinjang', 'Noodle'];
-const grpOf = i => i.grp === 'Noodle' ? 'Noodle' : 'Jinjang';
+const SGROUPS = ['Jinjang', 'Bought', 'Noodle'];   // Jinjang = made by Jinjang · Bought = bought in from other suppliers
+const grpOf = i => i.grp === 'Noodle' ? 'Noodle' : i.grp === 'Bought' ? 'Bought' : 'Jinjang';
 const uName = u => LANG === 'zh' ? (UNIT_ZH[String(u).toLowerCase()] || u) : u;
 const isBoss = () => curUser().role === 'Owner' && !store.get('xym_owner');
 const stockNeed = i => i.qty === '' ? 0 : needQty(i.qty, i, true);
