@@ -19,18 +19,18 @@
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html { background:#f6f5f2; }
   body { margin:0; background:var(--bg); color:var(--ink);
-         font:15px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; }
+         font:17px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Microsoft YaHei",sans-serif; }
   header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line);
            padding:10px 14px; display:flex; align-items:center; gap:10px; }
-  header h1 { font-size:17px; margin:0; flex:1; }
-  header .who { font-size:12px; color:var(--muted); text-align:right; }
-  header button { border:0; background:none; color:var(--muted); font-size:12px; text-decoration:underline; padding:0; }
+  header h1 { font-size:18.5px; line-height:1.15; margin:0; flex:1; min-width:0; }
+  header .who { font-size:13px; color:var(--muted); text-align:right; }
+  header button { border:0; background:none; color:var(--muted); font-size:14px; text-decoration:underline; padding:0; }
   .tools { padding:10px 14px 0; display:flex; gap:8px; }
-  .tools input { flex:1; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; background:var(--card); }
+  .tools input { flex:1; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:17px; background:var(--card); }
   .chips { padding:8px 14px 0; display:flex; gap:6px; flex-wrap:wrap; }
-  .chip { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:5px 12px; font-size:13px; }
+  .chip { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:5px 12px; font-size:15px; }
   .chip.on { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .group { margin:14px 14px 4px; font-size:12px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
+  .group { margin:14px 14px 4px; font-size:14px; font-weight:600; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); }
   .list { background:var(--card); margin:0 10px; border-radius:12px; border:1px solid var(--line); overflow:hidden; }
   .row { display:flex; align-items:center; gap:10px; padding:10px 12px; border-top:1px solid var(--line); }
   .row:first-child { border-top:0; }
@@ -38,67 +38,69 @@
   .name { font-weight:600; word-break:break-word; }
   .row.todo .name { color:var(--red); }
   .row.done .name::after { content:" ✓"; color:var(--green); font-weight:700; }
-  .hint { font-size:12.5px; color:var(--muted); margin-top:1px; }
-  .meta { font-size:11.5px; color:var(--muted); margin-top:2px; }
-  .qty { width:84px; flex:none; text-align:center; font-size:18px; padding:9px 6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; }
+  .hint { font-size:14.5px; color:var(--muted); margin-top:1px; }
+  .meta { font-size:13px; color:var(--muted); margin-top:2px; }
+  .qty { width:84px; flex:none; text-align:center; font-size:20.5px; padding:9px 6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; }
   .qty:focus { outline:none; border-color:var(--ink); }
   .qty.changed { border-color:var(--brand); background:#fdf3ef; }
   .spacer { height:96px; }
   footer { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line);
            padding:10px 12px calc(10px + env(safe-area-inset-bottom)); display:flex; gap:10px; align-items:center; }
-  footer .prog { flex:1; font-size:13px; color:var(--muted); }
-  .btn { border:0; border-radius:10px; padding:12px 16px; font-size:15px; font-weight:600; }
+  footer .prog { flex:1; font-size:15px; color:var(--muted); }
+  .btn { border:0; border-radius:10px; padding:12px 16px; font-size:17px; font-weight:600; }
   .btn.save { background:var(--brand); color:var(--brand-ink); min-width:110px; }
   .btn.save:disabled { opacity:.45; }
   .btn.clear { background:#efece6; color:var(--ink); }
   .center { max-width:320px; margin:18vh auto 0; padding:0 20px; text-align:center; }
-  .center h1 { font-size:22px; margin:0 0 4px; }
+  .center h1 { font-size:25.5px; margin:0 0 4px; }
   .center p { color:var(--muted); margin:0 0 18px; }
-  .pin { width:100%; font-size:28px; letter-spacing:.4em; text-align:center; padding:12px; border:1.5px solid var(--line); border-radius:12px; }
-  .err { color:var(--red); min-height:20px; margin:10px 0; font-size:14px; }
+  .pin { width:100%; font-size:32px; letter-spacing:.4em; text-align:center; padding:12px; border:1.5px solid var(--line); border-radius:12px; }
+  .err { color:var(--red); min-height:20px; margin:10px 0; font-size:16px; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.35); display:none; align-items:flex-end; justify-content:center; z-index:20; }
   .modal.show { display:flex; }
   .sheet { background:#fff; width:100%; max-width:480px; border-radius:16px 16px 0 0; padding:20px 18px calc(18px + env(safe-area-inset-bottom)); }
-  .sheet h2 { margin:0 0 6px; font-size:18px; }
+  .sheet h2 { margin:0 0 6px; font-size:20.5px; }
   .sheet p { margin:0 0 16px; color:var(--muted); }
   .sheet .btns { display:flex; gap:10px; }
   .sheet .btns .btn { flex:1; }
   .btn.danger { background:var(--red); color:#fff; }
   .toast { position:fixed; left:50%; bottom:90px; transform:translateX(-50%); background:var(--ink); color:#fff;
-           padding:9px 16px; border-radius:999px; font-size:14px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; }
+           padding:9px 16px; border-radius:999px; font-size:16px; opacity:0; transition:opacity .2s; pointer-events:none; z-index:30; }
   .toast.show { opacity:1; }
-  .lang { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:4px 10px; font-size:13px; font-weight:600; color:var(--ink); text-decoration:none; }
+  .lang { border:1px solid var(--line); background:var(--card); border-radius:999px; padding:4px 10px; font-size:15px; font-weight:600; color:var(--ink); text-decoration:none; }
   .center .lang { position:absolute; top:14px; right:14px; }
-  .sub { font-weight:400; color:var(--muted); font-size:13px; }
+  .sub { font-weight:400; color:var(--muted); font-size:15px; }
   .empty { padding:30px; text-align:center; color:var(--muted); }
   .name.ph { cursor:pointer; text-decoration:underline dotted; text-underline-offset:3px; }
   .phtag { color:var(--brand); font-weight:600; }
   .pbody { min-height:120px; display:flex; align-items:center; justify-content:center; margin:0 0 16px; color:var(--muted); }
   .pbody img { max-width:100%; max-height:60vh; border-radius:10px; }
-  .tabs { display:flex; gap:6px; padding:8px 14px 0; }
-  .tab { flex:1; border:1px solid var(--line); background:var(--card); border-radius:10px; padding:8px; font-size:14px; font-weight:600; color:var(--muted); }
+  .tabs { display:flex; gap:5px; padding:8px 10px 0; }
+  .tabs .tab { min-width:0; padding:8px 3px; }
+  .tabs:has(.tab:nth-child(5)) .tab { flex:1 1 auto; font-size:14px; }
+  .tab { flex:1; border:1px solid var(--line); background:var(--card); border-radius:10px; padding:8px; font-size:16px; font-weight:600; color:var(--muted); }
   .tab.on { background:var(--ink); color:#fff; border-color:var(--ink); }
-  .banner { margin:10px 10px 0; padding:12px; border-radius:12px; background:#fdf3ef; border:1px solid #f0d3c8; font-size:14px; }
+  .banner { margin:10px 10px 0; padding:12px; border-radius:12px; background:#fdf3ef; border:1px solid #f0d3c8; font-size:16px; }
   .banner .btn { margin-top:8px; width:100%; }
   .btn.ghost { background:#efece6; color:var(--ink); }
-  .srow { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-top:1px solid var(--line); font-size:14px; }
+  .srow { display:flex; justify-content:space-between; gap:8px; padding:7px 0; border-top:1px solid var(--line); font-size:16px; }
   .srow:first-child { border-top:0; }
   .srow b { white-space:nowrap; }
-  .srow.tot { font-size:16px; border-top:2px solid var(--ink); }
+  .srow.tot { font-size:18.5px; border-top:2px solid var(--ink); }
   .slist { max-height:45vh; overflow:auto; margin-bottom:14px; }
   .sheet .btns.col { flex-direction:column; }
   .qty:disabled { background:#f1efea; color:var(--muted); }
   .card { background:var(--card); margin:10px; border-radius:12px; border:1px solid var(--line); overflow:hidden; }
-  .card h3 { margin:0; padding:12px 12px 2px; font-size:16px; }
-  .card .cmeta { padding:0 12px 8px; font-size:13px; color:var(--muted); }
-  .msg { margin:0 12px 10px; padding:10px; background:#f1efea; border-radius:10px; font-size:15px; }
-  .warn { margin:0 12px 10px; color:var(--red); font-size:13.5px; }
+  .card h3 { margin:0; padding:12px 12px 2px; font-size:18.5px; }
+  .card .cmeta { padding:0 12px 8px; font-size:15px; color:var(--muted); }
+  .msg { margin:0 12px 10px; padding:10px; background:#f1efea; border-radius:10px; font-size:17px; }
+  .warn { margin:0 12px 10px; color:var(--red); font-size:15.5px; }
   .ok { color:var(--green); font-weight:600; }
   .card .actions { display:flex; gap:8px; padding:0 12px 12px; }
   .card .actions .btn { flex:1; text-align:center; text-decoration:none; }
   .btn.wa { background:#25a244; color:#fff; }
   .btn.wa.dis { opacity:.45; pointer-events:none; }
-  .idle { margin:14px 10px; padding:10px 12px; border:1px dashed var(--line); border-radius:12px; color:var(--muted); font-size:13.5px; }
+  .idle { margin:14px 10px; padding:10px 12px; border:1px dashed var(--line); border-radius:12px; color:var(--muted); font-size:15.5px; }
   .idle b { color:var(--ink); font-weight:600; }
   .idle .it { padding:6px 0; border-top:1px solid var(--line); cursor:pointer; }
   .idle .it:first-of-type { border-top:0; }
@@ -109,7 +111,7 @@
   .mc .marks { position:absolute; left:0; top:0; animation:pop .9s ease-in-out infinite; transform-origin:30% 30%; }
   .mc .steam { position:absolute; width:9%; height:16%; border-radius:50%; background:rgba(255,255,255,.85); filter:blur(3px); opacity:0; animation:steam 1.8s ease-out infinite; }
   .mc .s1 { left:14%; top:50%; } .mc .s2 { left:72%; top:50%; animation-delay:.9s; }
-  .boot .bt { color:var(--muted); font-size:14px; letter-spacing:.02em; }
+  .boot .bt { color:var(--muted); font-size:16px; letter-spacing:.02em; }
   .boot .bt span { display:inline-block; animation:dot 1.2s infinite; } .boot .bt span:nth-child(2){animation-delay:.2s} .boot .bt span:nth-child(3){animation-delay:.4s}
   @keyframes nom { 0%,100% { transform:translateY(0) scale(1,1); } 30% { transform:translateY(2%) scale(1.03,.96); } 55% { transform:translateY(-2%) scale(.98,1.03); } 75% { transform:translateY(1%) scale(1.02,.98); } }
   @keyframes pop { 0%,100% { opacity:.2; transform:scale(.9); } 45% { opacity:1; transform:scale(1.06); } }
@@ -120,35 +122,38 @@
   .drow { cursor:pointer; }
   .pick { cursor:pointer; align-items:center; }
   .qins { display:flex; gap:6px; flex:none; }
-  .qin { display:flex; flex-direction:column; align-items:center; font-size:11px; color:var(--muted); }
-  .qty.sm { width:66px; font-size:17px; padding:8px 4px; }
+  .qin { display:flex; flex-direction:column; align-items:center; font-size:13px; color:var(--muted); }
+  .qty.sm { width:66px; font-size:19.5px; padding:8px 4px; }
   #sum.picker .sheet { max-height:88vh; display:flex; flex-direction:column; }
   #sum.picker .slist { flex:1; max-height:none; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
-  .dec { font-size:12.5px; color:var(--muted); text-decoration:none; display:inline-block; margin-top:3px; }
+  .dec { font-size:14.5px; color:var(--muted); text-decoration:none; display:inline-block; margin-top:3px; }
   .dec.on { color:var(--brand); font-weight:600; }
-  .decbox { display:inline-block; width:66px; text-align:center; font-size:13px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
-  .asbar { position:sticky; top:0; z-index:40; background:#1f5fa8; color:#fff; text-align:center; padding:9px 12px; font-size:14px; font-weight:600; cursor:pointer; }
+  .decbox { display:inline-block; width:66px; text-align:center; font-size:15px; padding:10px 0; border:1.5px dashed #e3b8aa; border-radius:10px; color:var(--brand); font-weight:600; }
+  .asbar { position:sticky; top:0; z-index:40; background:#1f5fa8; color:#fff; text-align:center; padding:9px 12px; font-size:16px; font-weight:600; cursor:pointer; }
   .swrap { position:relative; background:var(--red); }
   .swrap + .swrap { border-top:1px solid var(--line); }
   .swrap > .row { position:relative; z-index:1; background:var(--card); border-top:0; transition:transform .15s; touch-action:pan-y; }
   .swrap > .row.open { transform:translateX(-76px); }
-  .swrap > .bin { position:absolute; right:0; top:0; bottom:0; width:76px; border:0; background:var(--red); color:#fff; font-size:24px; }
+  .swrap > .bin { position:absolute; right:0; top:0; bottom:0; width:76px; border:0; background:var(--red); color:#fff; font-size:27.5px; }
   .lvh { font-weight:700; margin:12px 0 2px; }
-  .undo { position:fixed; left:12px; right:12px; bottom:86px; z-index:60; display:none; align-items:center; justify-content:space-between; gap:10px; background:#222; color:#fff; padding:10px 14px; border-radius:12px; font-size:14px; }
-  .undo.show { display:flex; } .undo button { background:none; border:0; color:#ffd27a; font-weight:700; font-size:15px; }
-  .needbox { margin:10px 14px 0; padding:10px 12px; background:#fff3e0; border:1px solid #f3c98b; border-radius:12px; font-size:14px; line-height:1.5; }
-  .lv { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; font-size:14px; border-bottom:1px solid var(--line); }
+  .undo { position:fixed; left:12px; right:12px; bottom:86px; z-index:60; display:none; align-items:center; justify-content:space-between; gap:10px; background:#222; color:#fff; padding:10px 14px; border-radius:12px; font-size:16px; }
+  .undo.show { display:flex; } .undo button { background:none; border:0; color:#ffd27a; font-weight:700; font-size:17px; }
+  .needbox { margin:10px 14px 0; padding:10px 12px; background:#fff3e0; border:1px solid #f3c98b; border-radius:12px; font-size:16px; line-height:1.5; }
+  .lv { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 0; font-size:16px; border-bottom:1px solid var(--line); }
   .lv span { white-space:nowrap; }
   .btn.low { background:#f0a030; color:#fff; }
   .use1 { flex:none; min-width:0; padding:8px 12px; margin-right:8px; font-weight:700; }
-  .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:11.5px; line-height:18px; margin-left:4px; }
-  .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:15px; }
-.lgh{padding:10px 14px 4px;font-size:13px;font-weight:700;color:var(--brand);background:transparent}
-.robar{margin:6px 14px 0;padding:6px 10px;border-radius:8px;background:#eef3fb;color:#2b4c7e;font-size:13px;font-weight:600;text-align:center}
+  .badge { display:inline-block; min-width:18px; padding:0 5px; border-radius:9px; background:var(--red); color:#fff; font-size:13px; line-height:18px; margin-left:4px; }
+  .pq { width:100%; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:17px; }
+.lgh{padding:10px 14px 4px;font-size:15px;font-weight:700;color:var(--brand);background:transparent}
+.robar{margin:6px 14px 0;padding:6px 10px;border-radius:8px;background:#eef3fb;color:#2b4c7e;font-size:15px;font-weight:600;text-align:center}
 body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.clear, body.ro .lvl, body.ro .bin { display:none !important; }
 body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
 .ver{font-size:10px;color:var(--muted);opacity:.7}
 .tab.menu{flex:none;min-width:44px}
+header button.hmenu{flex:none;width:40px;height:40px;margin:-6px 0 -6px -6px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:22px;line-height:1;text-decoration:none;padding:0}
+header button.hmenu.on{border-color:var(--brand);color:var(--brand)}
+.bigq{flex:none;text-align:right;font-size:28px;font-weight:700;line-height:1.05}.bigq small{display:block;font-size:14px;font-weight:600;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -300,7 +305,7 @@ function render(){
   const u = DATA.user, owner = u.role === 'Owner';
   const groups = [...new Set(DATA.items.map(i => i.group))];
   $('#app').innerHTML = `
-    <header><h1>${T('title')}</h1>
+    <header>${menuBtn()}<h1>${T('title')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(DATA.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}
@@ -457,7 +462,7 @@ function canDeliv(){ const u = curUser(); return u.role === 'Owner' || u.role ==
 function tabsHtml(){
   const u = curUser(), b = (m, t) => `<button class="tab ${MODE===m?'on':''}" onclick="setMode('${m}')">${t}</button>`;
   document.body.classList.toggle('ro', u.role === 'Viewer');   // view-only account: nothing can be typed or tapped to change
-  const menu = `<button class="tab menu ${MODE==='usage'?'on':''}" onclick="openMenu()">☰</button>`;   // Owner / View-only: reports menu
+  const menu = '';   // ☰ menu moved to the top-left of the header (menuBtn)
   if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}${menu}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
   if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
@@ -550,7 +555,7 @@ function renderME(){
          ${owner?`<button class="btn save" onclick="startME()">${T('start')}</button>`:''}</div>`
     : (owner ? `<div class="banner">${T('meOn', me.session)}</div>` : '');
   $('#app').innerHTML = `
-    <header><h1>${T('meTitle')}</h1>
+    <header>${menuBtn()}<h1>${T('meTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(me.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}${banner}
@@ -692,7 +697,7 @@ function orderMsg(s){
 function waLink(s){ return 'https:\/\/wa.me/' + s.wa + '?text=' + encodeURIComponent(orderMsg(s)); }
 function renderOrders(){
   $('#app').innerHTML = `
-    <header><h1>${T('orderTitle')}</h1>
+    <header>${menuBtn()}<h1>${T('orderTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName('Owner'))} · ${esc(OD.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}<div id="body"></div><div class="spacer"></div>`;
@@ -727,7 +732,7 @@ function card(s, si){
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
     const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
     const manual = s.open && !s.active && !s.orderedToday;
-    return `<div class="card"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:13px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
+    return `<div class="card"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:15px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
       ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
       <div class="actions">${s.wa ? `<button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>` : ''}
       ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a>`
@@ -803,7 +808,7 @@ function stName(s, o){ const own = o && s === 'Requested' && DV && DV.side !== '
 function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.name) + ((zh ? l.name : l.zh) ? ` <span class="sub">${esc(zh ? (l.zh ? l.name : '') : l.zh)}</span>` : ''); }
 function dHeader(title){
   const u = curUser(), who = u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area);
-  return `<header><h1>${title}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
+  return `<header>${menuBtn()}<h1>${title}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
     <div class="who">${esc(areaName(who))} · ${esc(DV.today)}<br>${acctBtns()}</div></header>`;
 }
 let DONE_OPEN = false;   // Done (received / cancelled) list is closed until tapped
@@ -1014,6 +1019,12 @@ function renderDO(){
       st ? `BSD ${T('onHand')} ${st.onHand === '' || st.onHand === undefined ? '–' : esc(st.onHand) + ' ' + esc(st.cu)}${st.at ? ' ('+esc(st.at)+')' : ''}` : '',
       l.req!==''?`${T('req')} ${fmtQ(l.req, l.unit)}`:'', l.sent!==''?`${T('sentQ')} ${fmtQ(l.sent, l.unit, l.sentKg)}`:'', l.recv!==''?`${T('recvQ')} ${fmtQ(l.recv, l.unit, l.recvKg)}`:''].filter(Boolean).join(' · ');
     const money = own && l.amount !== undefined && l.amount !== '' ? ` · RM ${Number(l.amount).toFixed(2)}` : (own && l.price !== '' && l.price !== undefined ? ` · @RM ${Number(l.price).toFixed(2)}/${l.wt?'kg':esc(l.unit)}` : '');
+    if (!send && !recv) {   /* nothing to do on this order: big final number on the right, weight only as small text */
+      const fq = l.recv !== '' && l.recv !== undefined ? l.recv : l.sent !== '' && l.sent !== undefined ? l.sent : l.req, fk = l.recv !== '' && l.recv !== undefined ? l.recvKg : l.sentKg;
+      const sm = [fk !== '' && fk !== undefined && fk !== null ? esc(fk) + ' kg' : '', money.replace(/^ · /, '')].filter(Boolean).join(' · ');
+      return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.added?' <span class="sub">+</span>':''}</div>${sm ? `<div class="meta">${sm}</div>` : ''}</div>
+        <div class="bigq">${fq === '' || fq === undefined ? (l.decide ? '?' : '–') : esc(fq)}<small>${esc(l.unit)}</small></div></div>`;
+    }
     return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.added?' <span class="sub">+</span>':''}</div>
       <div class="meta">${nums || esc(l.unit)}${money}</div></div>
       ${send || recv ? `<div class="qins">${qtyBox(`data-line="${esc(l.line)}" data-f="q"`, l.unit, v)}${l.wt ? kgBox(`data-line="${esc(l.line)}" data-f="k"`, vk) : ''}</div>` : ''}</div>`; }).join('') +
@@ -1142,7 +1153,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v59';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v60';   // shown beside Log out – tells which version a phone is running
 function acctBtns(){
   const o = store.get('xym_owner');
   if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
@@ -1295,7 +1306,7 @@ function renderStock(){
       <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`); })()).join('');
   const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => pageOf(i) === g && stockNeed(i) > 0).length;
     return `<button class="chip ${g===SGRP?'on':''}" onclick="setSGrp('${g}')">${T(g === 'Jinjang' ? 'gJJ' : 'g'+g)}${n ? ` <span class="badge">${n}</span>` : ''}</button>`; }).join('')}</div>`;
-  $('#app').innerHTML = `<header><h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
+  $('#app').innerHTML = `<header>${menuBtn()}<h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(who))} · ${esc(SK.today)}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
     ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
     <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>
@@ -1343,6 +1354,7 @@ async function flushUse(){
   const ok = await SUSE_BUSY; SUSE_BUSY = null; return ok;
 }
 // ---------- ☰ Menu (Owner / View-only) + Usage report ----------
+function menuBtn(){ const r = (curUser() || {}).role; return r === 'Owner' || r === 'Viewer' ? `<button class="hmenu ${MODE==='usage'?'on':''}" onclick="openMenu()" aria-label="Menu">☰</button>` : ''; }
 function openMenu(){
   $('#sTitle').textContent = T('menuT'); $('#sText').textContent = '';
   $('#sList').innerHTML = `<div class="srow pick" onclick="closeSum();setMode('usage')"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
@@ -1368,10 +1380,10 @@ function renderUsage(){
     body = order.filter(k => by[k]).map(k => `<div class="group">${T(k)} · ${by[k].length}</div><div class="list">${by[k].map(i => { const un = esc(uName(i.unit));
       return `<div class="row"><div class="info"><div class="name">${lineName(i)}</div>
         <div class="meta">${T('uWd')} <b>${f(i.wd)}</b> ${un}${i.sat !== '' ? ` · ${T('uSat')} <b>${f(i.sat)}</b>` : ''} · ${T('uTot', f(i.total), un, i.nd)}</div>
-        <div class="meta" style="font-size:11px">${i.days.map(([d, v]) => `${d.slice(8,10)}/${d.slice(5,7)}: ${f(v)}`).join(' · ')}</div></div></div>`; }).join('')}</div>`).join('')
+        <div class="meta" style="font-size:13px">${i.days.map(([d, v]) => `${d.slice(8,10)}/${d.slice(5,7)}: ${f(v)}`).join(' · ')}</div></div></div>`; }).join('')}</div>`).join('')
       || `<div class="empty">${T('uNone')}</div>`;
   }
-  $('#app').innerHTML = `<header><h1>${T('usageT')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
+  $('#app').innerHTML = `<header>${menuBtn()}<h1>${T('usageT')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${esc(areaName(who))}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
     <div class="cmeta" style="padding:10px 14px 0">${T('uHelp')}${UZ.since ? ' ' + T('uSince', UZ.since.slice(8,10) + '/' + UZ.since.slice(5,7)) : ''}</div>${body}<div class="spacer"></div>`;
 }
