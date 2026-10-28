@@ -151,6 +151,7 @@ body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.cle
 body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
 .ver{font-size:10px;color:var(--muted);opacity:.7}
 .tab.menu{flex:none;min-width:44px}
+.macct{display:flex;flex-direction:column;gap:2px;padding:4px 0 10px;font-size:18px}
 header button.hmenu{flex:none;width:40px;height:40px;margin:-6px 0 -6px -6px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:22px;line-height:1;text-decoration:none;padding:0}
 header button.hmenu.hx{margin:-6px -6px -6px 0}
 header button.hmenu.on{border-color:var(--brand);color:var(--brand)}
@@ -309,7 +310,7 @@ function render(){
   $('#app').innerHTML = `
     <header>${menuBtn()}<h1>${T('title')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(whoKey(u)))} · ${esc(DATA.today)}<br>${acctBtns()}</div></header>
+      <div class="who">${acctBtns()}</div></header>
     ${tabsHtml()}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
@@ -560,7 +561,7 @@ function renderME(){
   $('#app').innerHTML = `
     <header>${menuBtn()}<h1>${T('meTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(whoKey(u)))} · ${esc(me.today)}<br>${acctBtns()}</div></header>
+      <div class="who">${acctBtns()}</div></header>
     ${tabsHtml()}${banner}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${locs.length > 1 ? `<div class="chips">${['All',...locs].map(g=>{ const s = MD.items.find(i=>i.loc===g);
@@ -702,7 +703,7 @@ function renderOrders(){
   $('#app').innerHTML = `
     <header>${menuBtn()}<h1>${T('orderTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName('Owner'))} · ${esc(OD.today)}<br>${acctBtns()}</div></header>
+      <div class="who">${acctBtns()}</div></header>
     ${tabsHtml()}<div id="body"></div><div class="spacer"></div>`;
   drawOrders();
 }
@@ -812,7 +813,7 @@ function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.n
 function dHeader(title){
   const u = curUser(), who = whoKey(u);
   return `<header>${menuBtn()}<h1>${title}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
-    <div class="who">${esc(areaName(who))} · ${esc(DV.today)}<br>${acctBtns()}</div></header>`;
+    <div class="who">${acctBtns()}</div></header>`;
 }
 let DONE_OPEN = false;   // Done (received / cancelled) list is closed until tapped
 function renderDeliv(){
@@ -1156,11 +1157,11 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v62';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v63';   // shown beside Log out – tells which version a phone is running
 function acctBtns(){
   const o = store.get('xym_owner');
   if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
-  return (curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button> · ` : '') + `<button onclick="logout()">${T('logout')}</button> <span class="ver">${APP_V}</span>`;
+  return curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button>` : '';
 }
 async function openSwitch(){
   $('#sTitle').textContent = T('switchT'); $('#sText').textContent = ''; $('#sList').innerHTML = `<div class="empty">${T('working')}</div>`;
@@ -1310,7 +1311,7 @@ function renderStock(){
   const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => pageOf(i) === g && stockNeed(i) > 0).length;
     return `<button class="chip ${g===SGRP?'on':''}" onclick="setSGrp('${g}')">${T(g === 'Jinjang' ? 'gJJ' : 'g'+g)}${n ? ` <span class="badge">${n}</span>` : ''}</button>`; }).join('')}</div>`;
   $('#app').innerHTML = `<header>${menuBtn()}<h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(who))} · ${esc(SK.today)}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
+      <div class="who">${acctBtns()}</div></header>${tabsHtml()}${chips}
     ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
     <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>
     <div class="list" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
@@ -1357,7 +1358,7 @@ async function flushUse(){
   const ok = await SUSE_BUSY; SUSE_BUSY = null; return ok;
 }
 // ---------- ☰ Menu (Owner / View-only) + Usage report ----------
-function menuBtn(){ const r = (curUser() || {}).role; return r === 'Owner' || r === 'Viewer' ? `<button class="hmenu ${MODE==='usage'?'on':''}" onclick="openMenu()" aria-label="Menu">☰</button>` : ''; }
+function menuBtn(){ return PIN ? `<button class="hmenu ${MODE==='usage'?'on':''}" onclick="openMenu()" aria-label="Menu">☰</button>` : ''; }
 let UPREV = 'daily';
 function openUsage(){ closeSum(); if (MODE !== 'usage') UPREV = MODE || 'daily'; setMode('usage'); }
 function closeUsage(){ if (MODE === 'usage') setMode(UPREV); }
@@ -1375,9 +1376,14 @@ window.addEventListener('popstate', () => {
   if (done) { try { history.pushState({ xym:'top' }, ''); } catch(e){} } else history.back();
 });
 function openMenu(){
+  const u = curUser(), boss = u.role === 'Owner' || u.role === 'Viewer', sw = store.get('xym_owner') && store.get('xym_owner') !== PIN;
+  const today = (DATA && DATA.today) || (DV && DV.today) || (SK && SK.today) || (MD && MD.me && MD.me.today) || (OD && OD.today) || '';
   $('#sTitle').textContent = T('menuT'); $('#sText').textContent = '';
-  $('#sList').innerHTML = `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
-    <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>`;
+  $('#sList').innerHTML = `<div class="macct"><b>👤 ${esc(areaName(whoKey(u)))}</b><span class="sub">${esc(today)} · ${APP_V}</span></div>` +
+    (boss ? `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
+    <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>` : '') +
+    (sw ? `<div class="srow pick" onclick="closeSum();backOwner()"><span>← ${T('ownerShort')}</span><b class="sub">›</b></div>`
+        : `<div class="srow pick" onclick="closeSum();logout()" style="color:var(--red)"><span>⏻ ${T('logout')}</span><b class="sub">›</b></div>`);
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
   $('#sum').classList.add('show');
 }
