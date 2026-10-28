@@ -152,6 +152,7 @@ body.ro input.qty { pointer-events:none; background:transparent; border-color:tr
 .ver{font-size:10px;color:var(--muted);opacity:.7}
 .tab.menu{flex:none;min-width:44px}
 header button.hmenu{flex:none;width:40px;height:40px;margin:-6px 0 -6px -6px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:22px;line-height:1;text-decoration:none;padding:0}
+header button.hmenu.hx{margin:-6px -6px -6px 0}
 header button.hmenu.on{border-color:var(--brand);color:var(--brand)}
 .bigq{flex:none;text-align:right;font-size:28px;font-weight:700;line-height:1.05}.bigq small{display:block;font-size:14px;font-weight:600;color:var(--muted)}
 </style>
@@ -473,7 +474,8 @@ function tabsHtml(){
   }
   return '';
 }
-function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else showDaily(); }
+let MSTACK = [], NOSTACK = false;
+function setMode(m){ if (!NOSTACK && m !== MODE && MODE && m !== 'usage' && MODE !== 'usage') { MSTACK.push(MODE); if (MSTACK.length > 20) MSTACK.shift(); } if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else showDaily(); }
 // Daily tab: show what we already have straight away, refresh quietly behind it
 async function showDaily(){
   if (!DATA) return load();
@@ -1154,7 +1156,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v61';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v62';   // shown beside Log out – tells which version a phone is running
 function acctBtns(){
   const o = store.get('xym_owner');
   if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
@@ -1171,7 +1173,7 @@ function useAccount(p, role){
   if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse();   // send this account's −1 taps before switching
   if (typeof SCOUNT !== 'undefined') { SCOUNT = null; SUSE_BUSY = null; }
   PIN = p; store.set('xym_pin', p); store.set('xym_role', role || '');
-  DATA = null; MD = null; OD = null; DV = null; DVIEW = null; USER = null; SK = null; SEDITS = {}; EDITS = {}; FILTER = ''; GROUP = 'All'; MODE = 'daily'; MODE_SET = '';
+  DATA = null; MD = null; OD = null; DV = null; DVIEW = null; USER = null; SK = null; SEDITS = {}; EDITS = {}; FILTER = ''; GROUP = 'All'; MODE = 'daily'; MODE_SET = ''; MSTACK = [];
   asBar(); window.scrollTo(0, 0); load();
 }
 function switchTo(k){ const a = ACCTS[k]; if (!a) return; closeSum();
@@ -1357,9 +1359,21 @@ async function flushUse(){
 // ---------- ☰ Menu (Owner / View-only) + Usage report ----------
 function menuBtn(){ const r = (curUser() || {}).role; return r === 'Owner' || r === 'Viewer' ? `<button class="hmenu ${MODE==='usage'?'on':''}" onclick="openMenu()" aria-label="Menu">☰</button>` : ''; }
 let UPREV = 'daily';
-function openUsage(){ closeSum(); if (MODE !== 'usage') { UPREV = MODE || 'daily'; try { history.pushState({ xym:'usage' }, ''); } catch(e){} } setMode('usage'); }
-function closeUsage(fromBack){ if (MODE !== 'usage') return; if (!fromBack && history.state && history.state.xym === 'usage') { history.back(); return; } setMode(UPREV); }
-window.addEventListener('popstate', () => { if (MODE === 'usage') closeUsage(true); });
+function openUsage(){ closeSum(); if (MODE !== 'usage') UPREV = MODE || 'daily'; setMode('usage'); }
+function closeUsage(){ if (MODE === 'usage') setMode(UPREV); }
+// Phone Back button = the app's Back: close a box → leave report / order → previous tab → (nothing left) leave the app
+function appBack(){
+  for (const id of ['sum', 'confirm', 'photo']) { const el = $('#' + id); if (el && el.classList.contains('show')) { el.classList.remove('show', 'picker'); return true; } }
+  if (MODE === 'usage') { closeUsage(); return true; }
+  if (MODE === 'deliv' && DVIEW) { DVIEW = null; renderDeliv(); window.scrollTo(0, 0); return true; }
+  while (MSTACK.length) { const m = MSTACK.pop(); if (m && m !== MODE) { NOSTACK = true; try { setMode(m); } finally { NOSTACK = false; } window.scrollTo(0, 0); return true; } }
+  return false;
+}
+try { history.replaceState({ xym:'base' }, ''); history.pushState({ xym:'top' }, ''); } catch(e){}
+window.addEventListener('popstate', () => {
+  let done = false; try { done = PIN && appBack(); } catch(e){}
+  if (done) { try { history.pushState({ xym:'top' }, ''); } catch(e){} } else history.back();
+});
 function openMenu(){
   $('#sTitle').textContent = T('menuT'); $('#sText').textContent = '';
   $('#sList').innerHTML = `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
@@ -1388,7 +1402,7 @@ function renderUsage(){
         <div class="meta" style="font-size:13px">${i.days.map(([d, v]) => `${d.slice(8,10)}/${d.slice(5,7)}: ${f(v)}`).join(' · ')}</div></div></div>`; }).join('')}</div>`).join('')
       || `<div class="empty">${T('uNone')}</div>`;
   }
-  $('#app').innerHTML = `<header><button class="hmenu" onclick="closeUsage()" aria-label="Close">✕</button><h1>${T('usageT')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button></header>${chips}
+  $('#app').innerHTML = `<header><h1>${T('usageT')}</h1><button class="hmenu hx" onclick="closeUsage()" aria-label="Close">✕</button></header>${chips}
     <div class="cmeta" style="padding:10px 14px 0">${T('uHelp')}${UZ.since ? ' ' + T('uSince', UZ.since.slice(8,10) + '/' + UZ.since.slice(5,7)) : ''}</div>${body}<div class="spacer"></div>`;
 }
 // Order button → confirmation first (what is low), then on to Order from Jinjang
