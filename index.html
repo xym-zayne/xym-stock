@@ -147,6 +147,7 @@
 .robar{margin:6px 14px 0;padding:6px 10px;border-radius:8px;background:#eef3fb;color:#2b4c7e;font-size:13px;font-weight:600;text-align:center}
 body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.clear, body.ro .lvl, body.ro .bin { display:none !important; }
 body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
+.ver{font-size:10px;color:var(--muted);opacity:.7}
 </style>
 </head>
 <body>
@@ -752,7 +753,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -762,7 +763,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -821,8 +822,9 @@ function renderDeliv(){
     `<div class="dbtns">${btns}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}<button class="btn ghost" style="flex:none;min-width:52px" onclick="toast(T('working'));reloadDeliv()">↻</button></div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
 }
+const shownLine = o => l => o.status === 'Requested' || o.status === 'Cancelled' || Number(l.sent) > 0 || (l.recv !== '' && Number(l.recv) > 0);   // once sent, 0 lines are hidden
 function doRow(o, hot){
-  const n = o.lines.length, t = o.status === 'Received' ? o.receivedAt : o.status === 'Sent' ? o.sentAt : o.createdAt;
+  const n = o.lines.filter(shownLine(o)).length, t = o.status === 'Received' ? o.receivedAt : o.status === 'Sent' ? o.sentAt : o.createdAt;
   return `<div class="row drow" onclick="openDO('${esc(o.id)}')"><div class="info">
     <div class="name" style="color:${hot?'var(--brand)':'var(--ink)'}">${esc(o.id)} · ${T('d'+o.dir)}</div>
     <div class="meta">${stName(o.status, o)} · ${esc(t)} · ${T('items', n)} · ${T('by')} ${esc(areaName(o.createdBy))}${o.note?' · '+esc(o.note):''}</div></div><span class="sub">›</span></div>`;
@@ -929,6 +931,7 @@ function bgAct(fn, args, meta, undo){
   if (undo) HANDLERS[key] = undo;
   runOutbox();
 }
+const REFUSE = /not allowed|owner only|view only|只能查看|not sent yet|item list changed|nothing typed|没有填数量|type the total|请填写|only the owner|not found|cannot cancel|wrong pin|no access|nothing to send/i;   // real "no" answers
 function netErr(e){ if (e && e.server) return false;   // the server answered "no" → do not retry
   return !e || e.net || /network|fetch|load failed|http 0|timed? ?out|connection|abort|cancell?ed|offline|internet/i.test(String(e.message || e)); }
 function callKeep(fn, ...args){   // like call(), but the request keeps going if the page is closed, and never thrown away on account switch
@@ -949,7 +952,12 @@ async function runOutbox(){
       let res;
       try { res = await callKeep('delivAct', job.pin, job.fn, ...args, job.key); }
       catch(e){
-        if (netErr(e)) { DQ_RUN = false; toast(T('offlineWait')); setTimeout(runOutbox, 8000); return; }   // no signal → keep it, try again
+        // Only a clear "no" from the server undoes the change. No signal → keep trying. Anything else (server busy / slow / lock) → try again a few times.
+        const msg = String(e && e.message || e), refused = REFUSE.test(msg);
+        if (!refused) {
+          const net = netErr(e), a = obox(), jj = a.find(x => x.key === job.key); if (jj) { jj.tries = (jj.tries || 0) + 1; oboxSet(a); }
+          if (net || !jj || jj.tries < 8) { DQ_RUN = false; toast(T(net ? 'offlineWait' : 'retrying')); setTimeout(runOutbox, net ? 8000 : 6000); return; }
+        }
         oboxSet(obox().filter(x => x.key !== job.key));
         const u = HANDLERS[job.key]; delete HANDLERS[job.key];
         if (u) u(e); else { toast(T('notSaved') + ' ' + String(e.message || e)); DV = null; if (MODE === 'deliv') { DVIEW = null; loadDeliv(); } }
@@ -996,7 +1004,7 @@ function openDO(id){ DVIEW = { kind:'do', id, extra:[], q:{}, k:{} }; renderDeli
 function renderDO(){
   const o = DV.list.find(x => x.id === DVIEW.id); if (!o) { DVIEW = null; return renderDeliv(); }
   const send = canSend(o), recv = canRecv(o), own = isOwnerD() || DV.side === 'VIEW';
-  const rows = o.lines.map(l => {
+  const rows = o.lines.filter(shownLine(o)).map(l => {   /* sent 0 → not shown any more */
     const base = send ? l.req : recv ? l.sent : '', baseKg = recv ? l.sentKg : '';
     const v = l.line in DVIEW.q ? DVIEW.q[l.line] : base, vk = l.line in DVIEW.k ? DVIEW.k[l.line] : baseKg;
     const st = send && o.dir === 'JB' ? DV.items.find(i => i.id === l.id) : null;
@@ -1018,7 +1026,7 @@ function renderDO(){
     <div class="cmeta" style="padding:8px 14px 0">${info}${o.note ? '<br>'+esc(o.note) : ''}${send ? '<br><b>'+T('checkQty')+'</b>' : recv ? '<br><b>'+T('checkRecv')+'</b>' : ''}</div>
     <div class="list" style="margin-top:10px">${rows}</div>
     ${total !== null ? `<div class="srow tot" style="margin:10px 14px"><span>${T('total')}</span><b>RM ${total.toFixed(2)}</b></div>` : ''}
-    <div class="spacer"></div>${act ? `<footer><div class="prog">${T('items', o.lines.length + DVIEW.extra.length)}</div>${act}</footer>` : ''}`;
+    <div class="spacer"></div>${act ? `<footer><div class="prog">${T('items', o.lines.filter(shownLine(o)).length + DVIEW.extra.length)}</div>${act}</footer>` : ''}`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
     const t = e.target, v = t.value.trim();
     if (t.dataset.line) DVIEW[t.dataset.f][t.dataset.line] = v; else DVIEW.extra[t.dataset.k][t.dataset.f] = v; }));
@@ -1132,10 +1140,11 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
+const APP_V = 'v58';   // shown beside Log out – tells which version a phone is running
 function acctBtns(){
   const o = store.get('xym_owner');
   if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
-  return (curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button> · ` : '') + `<button onclick="logout()">${T('logout')}</button>`;
+  return (curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button> · ` : '') + `<button onclick="logout()">${T('logout')}</button> <span class="ver">${APP_V}</span>`;
 }
 async function openSwitch(){
   $('#sTitle').textContent = T('switchT'); $('#sText').textContent = ''; $('#sList').innerHTML = `<div class="empty">${T('working')}</div>`;
