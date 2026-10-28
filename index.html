@@ -148,6 +148,7 @@
 body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.clear, body.ro .lvl, body.ro .bin { display:none !important; }
 body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
 .ver{font-size:10px;color:var(--muted);opacity:.7}
+.tab.menu{flex:none;min-width:44px}
 </style>
 </head>
 <body>
@@ -250,7 +251,7 @@ function areaName(a){ return LANG==='zh' ? (AREA_ZH[a] || a) : a; }
 function itemName(i){ return LANG==='zh' && i.zh ? i.zh : i.name; }
 function itemSub(i){ return LANG==='zh' ? (i.zh ? i.name : '') : i.zh; }
 function itemHint(i){ return LANG==='zh' && i.hintZh ? i.hintZh : i.hint; }
-function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (MODE==='deliv' && DV) renderDeliv(); else if (DATA) render(); else showLogin(); }
+function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (MODE==='usage') renderUsage(); else if (MODE==='stock' && SK) renderStock(); else if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (MODE==='deliv' && DV) renderDeliv(); else if (DATA) render(); else showLogin(); }
 function applyStatic(){ $('#cCancel').textContent=T('cancel'); $('#cOk').textContent=T('clear'); $('#pClose').textContent=T('close'); }
 
 // ---------- Login ----------
@@ -456,8 +457,9 @@ function canDeliv(){ const u = curUser(); return u.role === 'Owner' || u.role ==
 function tabsHtml(){
   const u = curUser(), b = (m, t) => `<button class="tab ${MODE===m?'on':''}" onclick="setMode('${m}')">${t}</button>`;
   document.body.classList.toggle('ro', u.role === 'Viewer');   // view-only account: nothing can be typed or tapped to change
-  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
-  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}</div>`;
+  const menu = `<button class="tab menu ${MODE==='usage'?'on':''}" onclick="openMenu()">☰</button>`;   // Owner / View-only: reports menu
+  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}${menu}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
+  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
     const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active);
     const cm = meOn ? 'month' : 'daily';
@@ -465,7 +467,7 @@ function tabsHtml(){
   }
   return '';
 }
-function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else showDaily(); }
+function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else showDaily(); }
 // Daily tab: show what we already have straight away, refresh quietly behind it
 async function showDaily(){
   if (!DATA) return load();
@@ -753,7 +755,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -763,7 +765,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -1140,7 +1142,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v58';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v59';   // shown beside Log out – tells which version a phone is running
 function acctBtns(){
   const o = store.get('xym_owner');
   if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
@@ -1339,6 +1341,39 @@ async function flushUse(){
   SUSE_BUSY = call('stockUseMany', PIN, list).then(r => { Object.keys(r || {}).forEach(id => { const i = SK && SK.items.find(x => x.id === id); if (i && !SUSE[id]) i.qty = r[id]; }); if (SK) remember('stock', SK); return true; })
     .catch(e => { list.forEach(x => SUSE[x.id] = (SUSE[x.id] || 0) + x.n); toast(String(e.message||e)); SUSE_T = setTimeout(flushUse, 5000); return false; });
   const ok = await SUSE_BUSY; SUSE_BUSY = null; return ok;
+}
+// ---------- ☰ Menu (Owner / View-only) + Usage report ----------
+function openMenu(){
+  $('#sTitle').textContent = T('menuT'); $('#sText').textContent = '';
+  $('#sList').innerHTML = `<div class="srow pick" onclick="closeSum();setMode('usage')"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
+    <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>`;
+  $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
+  $('#sum').classList.add('show');
+}
+let UZ = null, UDAYS = 7;
+async function loadUsage(days){
+  MODE = 'usage'; if (days) UDAYS = days; UZ = { loading: true }; renderUsage();
+  try { UZ = await call('getUsage', PIN, UDAYS); } catch(e){ UZ = { error: String(e.message||e) }; }
+  if (MODE === 'usage') renderUsage();
+}
+function renderUsage(){
+  const u = curUser(), who = u.role === 'Owner' ? 'Owner' : u.area, f = v => v === '' || v === undefined ? '–' : +(+v).toFixed(2);
+  const chips = `<div class="chips">${[7, 14, 30].map(d => `<button class="chip ${d===UDAYS?'on':''}" onclick="loadUsage(${d})">${T('lastNd', d)}</button>`).join('')}</div>`;
+  let body = '';
+  if (UZ.loading) body = `<div class="empty">${T('loading')}</div>`;
+  else if (UZ.error) body = `<div class="empty">${esc(UZ.error)}</div>`;
+  else {
+    const g = i => i.kind === 'stock' ? 'g' + (i.grp === 'Noodle' ? 'Noodle' : i.grp === 'Bought' ? 'Bought' : 'Jinjang') : 'daily', order = ['daily', 'gJinjang', 'gBought', 'gNoodle'];
+    const by = {}; UZ.items.forEach(i => (by[g(i)] = by[g(i)] || []).push(i));
+    body = order.filter(k => by[k]).map(k => `<div class="group">${T(k)} · ${by[k].length}</div><div class="list">${by[k].map(i => { const un = esc(uName(i.unit));
+      return `<div class="row"><div class="info"><div class="name">${lineName(i)}</div>
+        <div class="meta">${T('uWd')} <b>${f(i.wd)}</b> ${un}${i.sat !== '' ? ` · ${T('uSat')} <b>${f(i.sat)}</b>` : ''} · ${T('uTot', f(i.total), un, i.nd)}</div>
+        <div class="meta" style="font-size:11px">${i.days.map(([d, v]) => `${d.slice(8,10)}/${d.slice(5,7)}: ${f(v)}`).join(' · ')}</div></div></div>`; }).join('')}</div>`).join('')
+      || `<div class="empty">${T('uNone')}</div>`;
+  }
+  $('#app').innerHTML = `<header><h1>${T('usageT')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
+      <div class="who">${esc(areaName(who))}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
+    <div class="cmeta" style="padding:10px 14px 0">${T('uHelp')}${UZ.since ? ' ' + T('uSince', UZ.since.slice(8,10) + '/' + UZ.since.slice(5,7)) : ''}</div>${body}<div class="spacer"></div>`;
 }
 // Order button → confirmation first (what is low), then on to Order from Jinjang
 function askStockOrder(){
