@@ -250,7 +250,8 @@ const TXT = {
         countedToday:'今天已点', underMin:(t,m)=>`⚠ 总数 ${t} – 少于最低订量 ${m}，供应商可能不送`,
         sendWa:'用 WhatsApp 发送', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', markOrdered:'标记为已订', noWa:'这个供应商没有 WhatsApp – 当面或打电话告诉他上面的清单，然后点「标记为已订」。', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
 };
-const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江' };
+const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江', 'View only':'只能查看' };
+function whoKey(u){ u = u || {}; return u.role === 'Owner' ? 'Owner' : u.role === 'Jinjang' ? 'Jinjang' : u.role === 'Viewer' ? 'View only' : u.area; }
 function T(k, ...a){ const v = TXT[LANG][k]; return typeof v === 'function' ? v(...a) : v; }
 function areaName(a){ return LANG==='zh' ? (AREA_ZH[a] || a) : a; }
 function itemName(i){ return LANG==='zh' && i.zh ? i.zh : i.name; }
@@ -307,7 +308,7 @@ function render(){
   $('#app').innerHTML = `
     <header>${menuBtn()}<h1>${T('title')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(DATA.today)}<br>${acctBtns()}</div></header>
+      <div class="who">${esc(areaName(whoKey(u)))} · ${esc(DATA.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
@@ -333,7 +334,7 @@ function drawList(){
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
       </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
   swipeRows();
@@ -557,7 +558,7 @@ function renderME(){
   $('#app').innerHTML = `
     <header>${menuBtn()}<h1>${T('meTitle')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(owner ? 'Owner' : u.area))} · ${esc(me.today)}<br>${acctBtns()}</div></header>
+      <div class="who">${esc(areaName(whoKey(u)))} · ${esc(me.today)}<br>${acctBtns()}</div></header>
     ${tabsHtml()}${banner}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${locs.length > 1 ? `<div class="chips">${['All',...locs].map(g=>{ const s = MD.items.find(i=>i.loc===g);
@@ -807,7 +808,7 @@ function stName(s, o){ const own = o && s === 'Requested' && DV && DV.side !== '
   return (own ? T('sOrdered') : (T('s' + s) || s)) + (o && o.pending ? ' · ' + T('saving') : ''); }
 function lineName(l){ const zh = LANG==='zh'; return esc(zh && l.zh ? l.zh : l.name) + ((zh ? l.name : l.zh) ? ` <span class="sub">${esc(zh ? (l.zh ? l.name : '') : l.zh)}</span>` : ''); }
 function dHeader(title){
-  const u = curUser(), who = u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area);
+  const u = curUser(), who = whoKey(u);
   return `<header>${menuBtn()}<h1>${title}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
     <div class="who">${esc(areaName(who))} · ${esc(DV.today)}<br>${acctBtns()}</div></header>`;
 }
@@ -1153,7 +1154,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v60';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v61';   // shown beside Log out – tells which version a phone is running
 function acctBtns(){
   const o = store.get('xym_owner');
   if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
@@ -1163,7 +1164,7 @@ async function openSwitch(){
   $('#sTitle').textContent = T('switchT'); $('#sText').textContent = ''; $('#sList').innerHTML = `<div class="empty">${T('working')}</div>`;
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`; $('#sum').classList.add('show');
   try { ACCTS = ACCTS || await call('getAccounts', PIN);
-    $('#sList').innerHTML = ACCTS.map((a, k) => `<div class="srow pick" onclick="switchTo(${k})"><span>${esc(areaName(a.role === 'Jinjang' ? 'Jinjang' : a.area))}</span><b class="sub">›</b></div>`).join(''); }
+    $('#sList').innerHTML = ACCTS.map((a, k) => `<div class="srow pick" onclick="switchTo(${k})"><span>${esc(areaName(whoKey(a)))}</span><b class="sub">›</b></div>`).join(''); }
   catch(e){ $('#sList').innerHTML = `<div class="empty">${esc(String(e.message||e))}</div>`; }
 }
 function useAccount(p, role){
@@ -1174,7 +1175,7 @@ function useAccount(p, role){
   asBar(); window.scrollTo(0, 0); load();
 }
 function switchTo(k){ const a = ACCTS[k]; if (!a) return; closeSum();
-  store.set('xym_owner', PIN); store.set('xym_as', a.role === 'Jinjang' ? 'Jinjang' : a.area); useAccount(a.pin, a.role); }
+  store.set('xym_owner', PIN); store.set('xym_as', whoKey(a)); useAccount(a.pin, a.role); }
 function backOwner(){ const o = store.get('xym_owner'); if (!o) return; store.del('xym_owner'); store.del('xym_as'); useAccount(o, 'Owner'); }
 function asBar(){ const o = store.get('xym_owner'), el = $('#asbar'); if (!el) return;
   if (o && o !== PIN) { el.textContent = T('viewAs', areaName(store.get('xym_as') || '')); el.hidden = false; } else el.hidden = true; }
@@ -1291,7 +1292,7 @@ async function refreshStock(){
 }
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
 function renderStock(){
-  const u = curUser(), who = u.role === 'Owner' ? 'Owner' : u.area, boss = isBoss();
+  const u = curUser(), who = whoKey(u), boss = isBoss();
   const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
   const two = SGRP === 'Jinjang';
   const rows = items.map((i, k) => (two && (k === 0 || grpOf(items[k-1]) !== grpOf(i)) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '') + (() => {
@@ -1355,9 +1356,13 @@ async function flushUse(){
 }
 // ---------- ☰ Menu (Owner / View-only) + Usage report ----------
 function menuBtn(){ const r = (curUser() || {}).role; return r === 'Owner' || r === 'Viewer' ? `<button class="hmenu ${MODE==='usage'?'on':''}" onclick="openMenu()" aria-label="Menu">☰</button>` : ''; }
+let UPREV = 'daily';
+function openUsage(){ closeSum(); if (MODE !== 'usage') { UPREV = MODE || 'daily'; try { history.pushState({ xym:'usage' }, ''); } catch(e){} } setMode('usage'); }
+function closeUsage(fromBack){ if (MODE !== 'usage') return; if (!fromBack && history.state && history.state.xym === 'usage') { history.back(); return; } setMode(UPREV); }
+window.addEventListener('popstate', () => { if (MODE === 'usage') closeUsage(true); });
 function openMenu(){
   $('#sTitle').textContent = T('menuT'); $('#sText').textContent = '';
-  $('#sList').innerHTML = `<div class="srow pick" onclick="closeSum();setMode('usage')"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
+  $('#sList').innerHTML = `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>`;
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
   $('#sum').classList.add('show');
@@ -1369,7 +1374,7 @@ async function loadUsage(days){
   if (MODE === 'usage') renderUsage();
 }
 function renderUsage(){
-  const u = curUser(), who = u.role === 'Owner' ? 'Owner' : u.area, f = v => v === '' || v === undefined ? '–' : +(+v).toFixed(2);
+  const f = v => v === '' || v === undefined ? '–' : +(+v).toFixed(2);
   const chips = `<div class="chips">${[7, 14, 30].map(d => `<button class="chip ${d===UDAYS?'on':''}" onclick="loadUsage(${d})">${T('lastNd', d)}</button>`).join('')}</div>`;
   let body = '';
   if (UZ.loading) body = `<div class="empty">${T('loading')}</div>`;
@@ -1383,8 +1388,7 @@ function renderUsage(){
         <div class="meta" style="font-size:13px">${i.days.map(([d, v]) => `${d.slice(8,10)}/${d.slice(5,7)}: ${f(v)}`).join(' · ')}</div></div></div>`; }).join('')}</div>`).join('')
       || `<div class="empty">${T('uNone')}</div>`;
   }
-  $('#app').innerHTML = `<header>${menuBtn()}<h1>${T('usageT')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
-      <div class="who">${esc(areaName(who))}<br>${acctBtns()}</div></header>${tabsHtml()}${chips}
+  $('#app').innerHTML = `<header><button class="hmenu" onclick="closeUsage()" aria-label="Close">✕</button><h1>${T('usageT')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button></header>${chips}
     <div class="cmeta" style="padding:10px 14px 0">${T('uHelp')}${UZ.since ? ' ' + T('uSince', UZ.since.slice(8,10) + '/' + UZ.since.slice(5,7)) : ''}</div>${body}<div class="spacer"></div>`;
 }
 // Order button → confirmation first (what is low), then on to Order from Jinjang
