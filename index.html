@@ -23,7 +23,10 @@
   header { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line);
            padding:10px 14px; display:flex; align-items:center; gap:10px; }
   header h1 { font-size:18.5px; line-height:1.15; margin:0; flex:1; min-width:0; }
-  header .who { font-size:13px; color:var(--muted); text-align:right; }
+  header .who { font-size:13px; color:var(--muted); text-align:right; display:flex; align-items:center; gap:10px; }
+  header button.rf { text-decoration:none; color:var(--ink); width:36px; height:36px; border:1px solid var(--line); border-radius:10px; background:var(--card); display:inline-flex; align-items:center; justify-content:center; }
+  header button.rf.spin svg { animation:rfspin .8s linear infinite; } @keyframes rfspin { to { transform:rotate(360deg); } }
+  #sTitle:empty { display:none; }
   header button { border:0; background:none; color:var(--muted); font-size:14px; text-decoration:underline; padding:0; }
   .tools { padding:10px 14px 0; display:flex; gap:8px; }
   .tools input { flex:1; padding:9px 12px; border:1px solid var(--line); border-radius:10px; font-size:17px; background:var(--card); }
@@ -151,6 +154,7 @@ body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.cle
 body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
 .ver{font-size:10px;color:var(--muted);opacity:.7}
 .tab.menu{flex:none;min-width:44px}
+.mic{display:inline-flex;align-items:center;gap:6px}
 .macct{display:flex;flex-direction:column;gap:2px;padding:4px 0 10px;font-size:18px}
 header button.hmenu{flex:none;width:40px;height:40px;margin:-6px 0 -6px -6px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:22px;line-height:1;text-decoration:none;padding:0}
 header button.hmenu.hx{margin:-6px -6px -6px 0}
@@ -476,7 +480,7 @@ function tabsHtml(){
   return '';
 }
 let MSTACK = [], NOSTACK = false;
-function setMode(m){ if (!NOSTACK && m !== MODE && MODE && m !== 'usage' && MODE !== 'usage') { MSTACK.push(MODE); if (MSTACK.length > 20) MSTACK.shift(); } if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else showDaily(); }
+function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else showDaily(); }
 // Daily tab: show what we already have straight away, refresh quietly behind it
 async function showDaily(){
   if (!DATA) return load();
@@ -764,7 +768,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -774,7 +778,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -830,7 +834,7 @@ function renderDeliv(){
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
   const body = sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
-    `<div class="dbtns">${btns}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}<button class="btn ghost" style="flex:none;min-width:52px" onclick="toast(T('working'));reloadDeliv()">↻</button></div>` +
+    `<div class="dbtns">${btns}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
 }
 const shownLine = o => l => o.status === 'Requested' || o.status === 'Cancelled' || Number(l.sent) > 0 || (l.recv !== '' && Number(l.recv) > 0);   // once sent, 0 lines are hidden
@@ -1157,11 +1161,19 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v63';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v64';   // shown beside Log out – tells which version a phone is running
+async function manualRefresh(btn){
+  if (btn) btn.classList.add('spin'); runOutbox();
+  const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
+  try { if (f) await f(); badgeRefresh(); toast(T('refreshed')); } catch(e){ toast(String(e.message||e)); }
+  document.querySelectorAll('header .rf').forEach(b => b.classList.remove('spin'));
+}
+const RF_SVG = '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg>';
 function acctBtns(){
   const o = store.get('xym_owner');
-  if (o && o !== PIN) return `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
-  return curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button>` : '';
+  const rf = `<button class="rf" onclick="manualRefresh(this)" aria-label="Refresh">${RF_SVG}</button>`;
+  if (o && o !== PIN) return rf + `<button onclick="backOwner()">← ${T('ownerShort')}</button>`;
+  return rf + (curUser().role === 'Owner' ? `<button onclick="openSwitch()">${T('switchAcc')}</button>` : '');
 }
 async function openSwitch(){
   $('#sTitle').textContent = T('switchT'); $('#sText').textContent = ''; $('#sList').innerHTML = `<div class="empty">${T('working')}</div>`;
@@ -1367,23 +1379,25 @@ function appBack(){
   for (const id of ['sum', 'confirm', 'photo']) { const el = $('#' + id); if (el && el.classList.contains('show')) { el.classList.remove('show', 'picker'); return true; } }
   if (MODE === 'usage') { closeUsage(); return true; }
   if (MODE === 'deliv' && DVIEW) { DVIEW = null; renderDeliv(); window.scrollTo(0, 0); return true; }
-  while (MSTACK.length) { const m = MSTACK.pop(); if (m && m !== MODE) { NOSTACK = true; try { setMode(m); } finally { NOSTACK = false; } window.scrollTo(0, 0); return true; } }
-  return false;
+  return false;   // on a tab: no tab history – Back twice closes the app
 }
+let BACK_AT = 0;
 try { history.replaceState({ xym:'base' }, ''); history.pushState({ xym:'top' }, ''); } catch(e){}
 window.addEventListener('popstate', () => {
   let done = false; try { done = PIN && appBack(); } catch(e){}
-  if (done) { try { history.pushState({ xym:'top' }, ''); } catch(e){} } else history.back();
+  if (!done && Date.now() - BACK_AT < 2500) { history.back(); return; }   // second Back within 2.5 s → leave the app
+  if (!done) { BACK_AT = Date.now(); toast(T('backExit')); }
+  try { history.pushState({ xym:'top' }, ''); } catch(e){}
 });
 function openMenu(){
   const u = curUser(), boss = u.role === 'Owner' || u.role === 'Viewer', sw = store.get('xym_owner') && store.get('xym_owner') !== PIN;
   const today = (DATA && DATA.today) || (DV && DV.today) || (SK && SK.today) || (MD && MD.me && MD.me.today) || (OD && OD.today) || '';
-  $('#sTitle').textContent = T('menuT'); $('#sText').textContent = '';
+  $('#sTitle').textContent = ''; $('#sText').textContent = '';
   $('#sList').innerHTML = `<div class="macct"><b>👤 ${esc(areaName(whoKey(u)))}</b><span class="sub">${esc(today)} · ${APP_V}</span></div>` +
     (boss ? `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>` : '') +
     (sw ? `<div class="srow pick" onclick="closeSum();backOwner()"><span>← ${T('ownerShort')}</span><b class="sub">›</b></div>`
-        : `<div class="srow pick" onclick="closeSum();logout()" style="color:var(--red)"><span>⏻ ${T('logout')}</span><b class="sub">›</b></div>`);
+        : `<div class="srow pick" onclick="closeSum();logout()" style="color:var(--red)"><span class="mic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> ${T('logout')}</span><b class="sub">›</b></div>`);
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
   $('#sum').classList.add('show');
 }
