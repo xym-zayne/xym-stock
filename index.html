@@ -922,7 +922,14 @@ async function submitNew(){
 // ---------- Background saving: actions show at once, the server catches up (one at a time, in order) ----------
 // The waiting list (outbox) is kept on the phone, so it still gets saved after switching pages, leaving the app
 // or the app being closed – it carries on as soon as the app is open again. Each job has a key, so the server never does it twice.
-const IDMAP = (() => { try { return JSON.parse(store.get('xym_idmap') || '{}'); } catch(e){ return {}; } })();   // guessed DO number → real one
+// v65: no long-lived "guessed → real" number map any more. An old map made a later tap on e.g. DO-0054 go to DO-0055
+// (Kitchen's receive "kept reappearing"). Now the real number is written straight into the jobs still waiting and the list.
+const IDMAP = {}; store.del('xym_idmap');
+function swapId(from, to){ if (!from || !to || from === to) return;
+  const a = obox(); a.forEach(j => { (j.ids || []).forEach(p => { if (j.args[p] === from) j.args[p] = to; }); (j.view || []).forEach(v => { if (v.id === from) v.id = to; }); if (j.lid === from) j.lid = to; if (j.flid === from) j.flid = to; }); oboxSet(a);
+  if (DV && DV.list) DV.list.forEach(o => { if (o.id === from && o.pending) o.id = to; });
+  if (DVIEW && DVIEW.kind === 'do' && DVIEW.id === from) DVIEW.id = to;
+  Object.keys(FOLLOW).forEach(k => { if (FOLLOW[k] === from) FOLLOW[k] = to; }); }
 const HANDLERS = {};
 function obox(){ try { return JSON.parse(store.get('xym_outbox') || '[]'); } catch(e){ return []; } }
 function oboxSet(a){ if (a.length) store.set('xym_outbox', JSON.stringify(a)); else store.del('xym_outbox'); DPEND = a.length; }
@@ -931,12 +938,12 @@ let DPEND = obox().length, DQ_RUN = false;
 // (taken before the save arrived) can never bring back an order you already cancelled / sent / received.
 function overlay(d){
   const a = obox(); if (!a.length) return d;
-  a.forEach(j => (j.view || []).forEach(v => { const id = IDMAP[v.id] || v.id;
-    const i = d.list.findIndex(o => o.id === id || o.id === v.id), c = Object.assign(JSON.parse(JSON.stringify(v)), { id, pending: true });
+  a.forEach(j => (j.view || []).forEach(v => { const id = v.id, isNew = id === j.lid || id === j.flid;   // a brand-new order never replaces a real one that happens to have the same guessed number
+    const i = isNew ? d.list.findIndex(o => o.pending && o.tmp === j.key + id) : d.list.findIndex(o => o.id === id), c = Object.assign(JSON.parse(JSON.stringify(v)), { id, pending: true, tmp: isNew ? j.key + id : undefined });
     if (i >= 0) d.list[i] = c; else d.list.unshift(c); }));
   return d;
 }
-function nextLocalId(){ let n = 0; DV.list.forEach(o => { const m = String(IDMAP[o.id] || o.id).match(/(\d+)$/); if (m) n = Math.max(n, Number(m[1])); }); return 'DO-' + String(n + 1).padStart(4, '0'); }
+function nextLocalId(){ let n = 0; DV.list.forEach(o => { const m = String(o.id).match(/(\d+)$/); if (m) n = Math.max(n, Number(m[1])); }); return 'DO-' + String(n + 1).padStart(4, '0'); }
 // meta: ids = argument positions holding a DO number (swapped for the real one when sent) · lid / flid = guessed new / follow-up number
 function bgAct(fn, args, meta, undo){
   const key = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -963,7 +970,7 @@ async function runOutbox(){
   try {
     for (;;) {
       const job = obox()[0]; if (!job) break;
-      const args = job.args.map((x, i) => (job.ids || []).includes(i) ? (IDMAP[x] || x) : x);
+      const args = job.args.slice();
       let res;
       try { res = await callKeep('delivAct', job.pin, job.fn, ...args, job.key); }
       catch(e){
@@ -979,13 +986,11 @@ async function runOutbox(){
         continue;
       }
       const r = res && res.r;
-      if (job.lid && typeof r === 'string' && r !== job.lid) { IDMAP[job.lid] = r; toast(T('idChanged', job.lid, r)); }
-      if (job.flid && r && r.follow && r.follow !== job.flid) IDMAP[job.flid] = r.follow;
-      if (job.lid || job.flid) store.set('xym_idmap', JSON.stringify(IDMAP));
       oboxSet(obox().filter(x => x.key !== job.key)); delete HANDLERS[job.key];
+      if (job.lid && typeof r === 'string' && r !== job.lid) { swapId(job.lid, r); toast(T('idChanged', job.lid, r)); }
+      if (job.flid && r && r.follow && r.follow !== job.flid) swapId(job.flid, r.follow);
       if (!obox().length && res && res.deliv && res.deliv.items && job.pin === PIN) {   // all saved → take the server's list
         DV = remember('deliv', res.deliv);
-        if (DVIEW && DVIEW.kind === 'do' && IDMAP[DVIEW.id]) DVIEW.id = IDMAP[DVIEW.id];
         if (MODE === 'deliv' && !busy() && (!DVIEW || doClean())) redraw(DVIEW ? renderDO : renderDeliv);
         showBadge(); }
     }
@@ -1066,7 +1071,8 @@ function doLines(o, recv){
 const FOLLOW = {};   // DO id → follow-up DO id made when Jinjang sent short
 async function doAct(fn, recv, okMsg, later){
   const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, recv); if (!lines) return;
-  if (!recv && o.dir === 'JB' && later === undefined) {   // Jinjang sending less than BSD asked → ask once: send the rest later?
+  later = false;   // v65 (Zayne): no follow-up order any more when Jinjang is short – the next daily count orders it again (follow-ups made double orders, e.g. DO-0056 + DO-0058)
+  if (false) {
     const sh = o.lines.filter(l => Number(l.req) > 0).map(l => { const x = lines.find(y => y.line === l.line), q = x ? x.qty : 0;
       return q < Number(l.req) ? `${lineName(l)} · ${T('shortL', esc(l.req), esc(q), esc(uName(l.unit)))}` : ''; }).filter(Boolean);
     if (sh.length) {
@@ -1108,8 +1114,8 @@ function noticeText(o, kind, lang){
     if (kind === 'sent' && Number(q) === 0) return '';   // not sent → listed under "will send later" or simply left out
     return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).map((x, k) => { if (!x) return '';
       const g = lineGrp(ls[k].id), h = many && g !== last ? `\n\n【${grpLabel(g, zh)}】` : ''; last = g; return h + '\n• ' + x; }).join(''); };   /* one item per line, under group headings */
-  const fo = kind === 'sent' && FOLLOW[o.id] && DV.list.find(x => x.id === FOLLOW[o.id]);
-  const fl = (zh) => fo ? (zh ? `\n\n⏳ 缺货，后补（${fo.id}）：` : `\n\n⏳ No stock – later (${fo.id}):`) + fo.lines.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + l.req + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
+  const shortL = kind === 'sent' ? o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req)) : [];   // asked but not (fully) sent – just listed, no new order
+  const fl = (zh) => shortL.length ? (zh ? `\n\n❌ 没货：` : `\n\n❌ No stock:`) + shortL.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + Math.round((Number(l.req) - (Number(l.sent) || 0)) * 1000) / 1000 + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
   const zh = `${{ new:'🛒 新订单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
   const en = `${{ new:'🛒 New order', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please confirm in the app when sent'}`;
   return lang === 'en' ? en : lang === 'both' ? zh + '\n\n' + en : zh;
@@ -1161,7 +1167,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v64';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v65';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
