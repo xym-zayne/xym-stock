@@ -291,10 +291,12 @@ function logout(){ store.del('xym_owner'); store.del('xym_as'); setTimeout(asBar
 
 async function load(){
   setTimeout(runOutbox, 300);   // deliveries saved on this phone but not yet on the server (app was closed) → send now
+  if (!JJ_COUNT_ON && store.get('xym_role') === 'Jinjang') return loadDeliv();
   $('#app').innerHTML = bootHtml();
   try {
     if ((store.get('xym_pending')||'[]') !== '[]') await flush();
     DATA = await call('getDaily', PIN); EDITS = {}; USER = DATA.user; store.set('xym_role', DATA.user.role);
+    if (!JJ_COUNT_ON && DATA.user.role === 'Jinjang') return loadDeliv();
     if (MODE_SET === 'deliv' && canDeliv()) return loadDeliv();
     if (DATA.me && DATA.me.active && MODE_SET !== 'daily' && DATA.user.role !== 'Viewer') { MODE = 'month'; return loadME(); }
     if (DATA.user.role !== 'Owner') MODE = 'daily';
@@ -338,13 +340,14 @@ function tsOf(t){ const m = String(t || '').match(/^(?:(\d{1,2})\/(\d{1,2})\s+)?
 // Operating day starts 06:00 (Zayne): counted / received / no-stock ticks reset then; ordered + on the way stay until done
 function opStart(){ const d = new Date(); if (d.getHours() < 6) d.setDate(d.getDate() - 1); d.setHours(6, 0, 0, 0); return d.getTime(); }
 const inDay = t => !!t && tsOf(t) >= opStart();
+const opDay = ts => { const d = new Date(ts - 6 * 3600000); return d.getFullYear() * 400 + d.getMonth() * 32 + d.getDate(); };   // operating day (06:00 → 06:00)
 function tickOf(id, at, low, so, jj){
   if (jj) return low ? 'low' : inDay(at) ? 'cnt' : '';   // Jinjang's own list: BSD's orders don't apply
   const x = OPEN_ORD[id];
   if (x && x.kind === 'open') return 'ord'; if (x && x.kind === 'way') return 'way';
   if (x && x.kind === 'short' && (!x.at || inDay(x.at))) return 'short';
   if (x && x.kind === 'rcv' && inDay(x.at) && tsOf(at) <= tsOf(x.at) + 60000) return 'rcv';   // received today → blue until the number changes or 06:00
-  if (so && so.at && (!at || tsOf(at) < tsOf(so.at))) { SO_MAP[id] = so; return 'sord'; }   // ordered from a supplier (Order tab) – until counted again
+  if (so && so.at && (!at || tsOf(at) < tsOf(so.at) || opDay(tsOf(at)) === opDay(tsOf(so.at)))) { SO_MAP[id] = so; return 'sord'; }   // ordered from a supplier (Order tab) – until counted again
   if (low) return 'low'; return inDay(at) ? 'cnt' : '';
 }
 const SO_MAP = {};
@@ -359,8 +362,9 @@ let OPEN_ORD = {};
 function ordRefresh(){ const k = JSON.stringify(OPEN_ORD); OPEN_ORD = openOrd(); if (JSON.stringify(OPEN_ORD) === k || busy()) return;
   if ((MODE === 'daily' || MODE === 'jjc') && DATA && $('#body')) redraw(drawList); else if (MODE === 'stock' && SK) redraw(renderStock); }
 // ---------- Count list ----------
+const JJ_COUNT_ON = false;   // Jinjang daily count – switch on when the list / units / ordering are finished
 let GROUP_SET = false, DSCOPE = 'bsd';   // Owner / View-only: 'bsd' = Daily tab, 'jj' = Jinjang tab
-const inScope = i => DATA.user.role === 'Jinjang' || (DSCOPE === 'jj') === !!i.jj;
+const inScope = i => (DATA.user.role === 'Jinjang' || (DSCOPE === 'jj') === !!i.jj) && (JJ_COUNT_ON || !i.jj);
 function render(){
   const u = DATA.user, owner = u.role === 'Owner' || u.role === 'Viewer';
   if (u.role === 'Viewer' && !GROUP_SET && GROUP === 'All' && DATA.items.some(i => i.group === 'Kitchen')) GROUP = 'Kitchen';   // View-only: Kitchen first, tap Bar etc. to change
@@ -525,8 +529,9 @@ function tabsHtml(){
   const u = curUser(), b = (m, t) => `<button class="tab ${MODE===m?'on':''}" onclick="setMode('${m}')">${t}</button>`;
   document.body.classList.toggle('ro', u.role === 'Viewer');   // view-only account: nothing can be typed or tapped to change
   const menu = '';   // ☰ menu moved to the top-left of the header (menuBtn)
-  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('jjc',T('jjTab'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
-  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('jjc',T('jjTab'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
+  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${JJ_COUNT_ON ? b('jjc',T('jjTab')) : ''}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
+  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${JJ_COUNT_ON ? b('jjc',T('jjTab')) : ''}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
+  if (u.role === 'Jinjang' && !JJ_COUNT_ON) return '';
   if (u.role === 'Jinjang') { const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active), cm = meOn ? 'month' : 'daily';
     return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv') + delivBadge())}</div>`; }
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
@@ -1231,7 +1236,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v72';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v73';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
