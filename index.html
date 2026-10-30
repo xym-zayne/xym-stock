@@ -41,6 +41,7 @@
   .name { font-weight:600; word-break:break-word; }
   .row.todo .name { color:var(--red); }
   .row.done .name::after { content:" ✓"; color:var(--green); font-weight:700; }
+  .tkl .row.done .name::after { content:none; }   /* Daily + Stock use the WhatsApp-style ticks instead */
   .hint { font-size:14.5px; color:var(--muted); margin-top:1px; }
   .meta { font-size:13px; color:var(--muted); margin-top:2px; }
   .qty { width:84px; flex:none; text-align:center; font-size:20.5px; padding:9px 6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; }
@@ -156,6 +157,8 @@ body.ro input.qty { pointer-events:none; background:transparent; border-color:tr
 .ver{font-size:10px;color:var(--muted);opacity:.7}
 .tab.menu{flex:none;min-width:44px}
 .otag{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:8px;background:#e8f1fb;color:#1f5fa8;font-size:13px;font-weight:600}.otag.short{background:#fff3e0;color:#a35a00}
+.tk{display:inline-flex;margin-left:6px;font-weight:800;font-size:16px;letter-spacing:-5px;padding-right:5px;cursor:pointer;vertical-align:1px}.tk i,.tklg i{font-style:normal;font-weight:800}.g{color:#9a968d}.r{color:var(--red)}.b{color:#2a8bf2}.o{color:#e08a00}
+.tklg{display:flex;flex-wrap:wrap;gap:4px 12px;margin:8px 14px 0;font-size:13px;color:var(--muted)}.tklg span i{letter-spacing:-4px;margin-right:4px}
 .mic{display:inline-flex;align-items:center;gap:6px}
 .macct{display:flex;flex-direction:column;gap:2px;padding:4px 0 10px;font-size:18px}
 header button.hmenu{flex:none;width:40px;height:40px;margin:-6px 0 -6px -6px;border:1px solid var(--line);border-radius:10px;background:var(--card);color:var(--ink);font-size:22px;line-height:1;text-decoration:none;padding:0}
@@ -321,13 +324,30 @@ function openOrd(){
       const req = Number(l.req) || 0, sent = Number(l.sent) || 0, day = ordDay(o.createdAt);
       if (o.status === 'Requested') { if (req > 0 || l.decide) m[l.id] = { kind: 'open', q: req, unit: l.unit, id: o.id, day }; return; }
       if (o.status === 'Sent') { if (sent > 0) m[l.id] = { kind: 'way', q: sent, unit: l.unit, id: o.id, day, short: req > sent ? req - sent : 0 }; else if (req > 0 && !old(o)) m[l.id] = { kind: 'short', q: req, unit: l.unit, id: o.id, day }; else m[l.id] = null; return; }
-      if (req > 0 && sent < req && !old(o)) m[l.id] = { kind: 'short', q: req - sent, unit: l.unit, id: o.id, day }; else m[l.id] = null; }); });
+      if (req > 0 && sent < req && !old(o)) { m[l.id] = { kind: 'short', q: req - sent, unit: l.unit, id: o.id, day }; return; }
+      const rq = Number(l.recv) || 0; m[l.id] = rq > 0 ? { kind: 'rcv', q: rq, unit: l.unit, id: o.id, day, at: o.receivedAt } : null; }); });
   Object.keys(m).forEach(k => { if (!m[k]) delete m[k]; });
   return m;
 }
 function ordTag(id){ const x = OPEN_ORD[id]; if (!x) return ''; const q = x.q ? ' ' + (Math.round(x.q * 1000) / 1000) + ' ' + esc(uName(x.unit)) : '';
   const t = x.kind === 'open' ? T('ordered') + ' ' + x.day + q : x.kind === 'way' ? T('onWay') + q : T('ordered') + ' ' + x.day + q + ' · ' + T('jjNoStock');
   return `<div class="otag ${x.kind === 'short' ? 'short' : ''}">🛒 ${t} · ${esc(x.id)}</div>`; }
+// WhatsApp-style ticks: ✓ grey counted today · ✓ red low, not ordered · ✓✓ grey ordered · ✓✓ blue+grey sent · ✓✓ blue received · ✓✓ orange Jinjang no stock
+function tsOf(t){ const m = String(t || '').match(/^(?:(\d{1,2})\/(\d{1,2})\s+)?(\d{1,2}):(\d{2})$/); if (!m) return 0; const d = new Date();
+  if (m[1]) { d.setMonth(Number(m[2]) - 1, Number(m[1])); if (d > new Date(Date.now() + 86400000)) d.setFullYear(d.getFullYear() - 1); } d.setHours(Number(m[3]), Number(m[4]), 0, 0); return d.getTime(); }
+const isToday = t => !!t && !/\//.test(String(t));
+function tickOf(id, at, low){
+  const x = OPEN_ORD[id];
+  if (x && x.kind === 'open') return 'ord'; if (x && x.kind === 'way') return 'way'; if (x && x.kind === 'short') return 'short';
+  if (x && x.kind === 'rcv' && tsOf(at) <= tsOf(x.at) + 60000) return 'rcv';   // received → blue until the number changes again
+  if (low) return 'low'; return isToday(at) ? 'cnt' : '';
+}
+function tickHtml(k, id){ if (!k) return ''; const c = { cnt:['g'], low:['r'], ord:['g','g'], way:['b','g'], rcv:['b','b'], short:['o','o'] }[k];
+  return ` <span class="tk" onclick="event.stopPropagation();tickInfo('${k}','${esc(id)}')">${c.map(x => `<i class="${x}">✓</i>`).join('')}</span>`; }
+function tickInfo(k, id){ const x = OPEN_ORD[id], q = x && x.q ? ' ' + (Math.round(x.q * 1000) / 1000) + ' ' + uName(x.unit) : '';
+  toast({ cnt: T('tkCnt'), low: T('tkLow'), ord: x ? T('ordered') + ' ' + x.day + q + ' · ' + x.id : '', way: x ? T('onWay') + q + ' · ' + x.id : '',
+    rcv: x ? T('tkRcv') + q + ' · ' + x.id : '', short: x ? T('ordered') + ' ' + x.day + q + ' · ' + T('jjNoStock') + ' · ' + x.id : '' }[k] || ''); }
+function tickLegend(){ return `<div class="tklg"><span><i class="g">✓</i> ${T('tkCnt')}</span><span><i class="g">✓</i><i class="g">✓</i> ${T('ordered')}</span><span><i class="b">✓</i><i class="g">✓</i> ${T('onWay')}</span><span><i class="b">✓</i><i class="b">✓</i> ${T('tkRcv')}</span><span><i class="o">✓</i><i class="o">✓</i> ${T('jjNoStock')}</span><span><i class="r">✓</i> ${T('tkLow')}</span></div>`; }
 const openQ = x => x && (x.kind === 'open' || x.kind === 'way') ? x.q : 0;   // only orders still coming count as "already ordered"
 let OPEN_ORD = {};
 function ordRefresh(){ const k = JSON.stringify(OPEN_ORD); OPEN_ORD = openOrd(); if (JSON.stringify(OPEN_ORD) === k || busy()) return;
@@ -345,7 +365,7 @@ function render(){
     ${tabsHtml()}
     <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}"></div>
     ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
-    <div id="body"></div><div class="spacer"></div>
+    ${tickLegend()}<div id="body" class="tkl"></div><div class="spacer"></div>
     <footer><div class="prog" id="prog"></div>
       <button class="btn clear" onclick="openConfirm()">${T('clear')}</button>
       <button class="btn save" id="save" onclick="save()" disabled>${T('save')}</button></footer>`;
@@ -365,9 +385,9 @@ function drawList(){
       const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
       const sub = itemSub(i), hint = itemHint(i);
       return `<div class="row ${i.counted?'done':'todo'}">
-        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
+        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, i.counted && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min)), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div>${ordTag(i.id)}</div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
       </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
   swipeRows();
@@ -794,7 +814,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -804,7 +824,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -1194,7 +1214,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v67';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v68';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1344,13 +1364,13 @@ function renderStock(){ OPEN_ORD = openOrd();
   const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
   const two = SGRP === 'Jinjang';
   const rows = items.map((i, k) => (two && (k === 0 || grpOf(items[k-1]) !== grpOf(i)) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '') + (() => {
-    const old = i.days === '' || i.days > 5, unit = esc(uName(i.unit)), nd = stockNeed(i);
+    const old = i.qty === '', unit = esc(uName(i.unit)), nd = stockNeed(i);   // any change of the number (count, −1, received) = updated
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
-      i.days === '' ? '' : `<span style="color:${old?'var(--red)':'var(--muted)'}">${T('checkedAgo', i.days)}</span>`,
+      i.at ? `${T('updated')} ${esc(i.at)}` : '',
       nd > 0 && !openQ(OPEN_ORD[i.id]) ? `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>` : '',
       boss ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
-    return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}</div><div class="meta">${meta}</div>${ordTag(i.id)}</div>
+    return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}${tickHtml(tickOf(i.id, i.at, nd > 0), i.id)}</div><div class="meta">${meta}</div></div>
       <button class="btn ghost use1" onclick="useOne('${esc(i.id)}')">${T('use1')}</button>
       <input class="qty sm ${i.id in SEDITS?'changed':''}" inputmode="decimal" data-id="${esc(i.id)}" value="${esc(v)}" placeholder="${i.qty===''?'–':esc(i.qty)}"></div>`); })()).join('');
   const chips = `<div class="chips">${SGROUPS.map(g => { const n = SK.items.filter(i => pageOf(i) === g && stockNeed(i) > 0).length;
@@ -1358,8 +1378,8 @@ function renderStock(){ OPEN_ORD = openOrd();
   $('#app').innerHTML = `<header>${menuBtn()}<h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${acctBtns()}</div></header>${tabsHtml()}${chips}
     ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
-    <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>
-    <div class="list" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
+    <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>${tickLegend()}
+    <div class="list tkl" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
     <footer><button class="btn ${nAll?'save':'ghost'}" onclick="askStockOrder()">${T('orderN', nAll)}</button><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
     const id = e.target.dataset.id, v = e.target.value.trim(); if (v === '') delete SEDITS[id]; else SEDITS[id] = v;
