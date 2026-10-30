@@ -82,6 +82,7 @@
   .tabs { display:flex; gap:5px; padding:8px 10px 0; }
   .tabs .tab { min-width:0; padding:8px 3px; }
   .tabs:has(.tab:nth-child(5)) .tab { flex:1 1 auto; font-size:14px; }
+  .tabs:has(.tab:nth-child(6)) { overflow-x:auto; scrollbar-width:none; } .tabs:has(.tab:nth-child(6)) .tab { flex:0 0 auto; padding:8px 10px; }
   .tab { flex:1; border:1px solid var(--line); background:var(--card); border-radius:10px; padding:8px; font-size:16px; font-weight:600; color:var(--muted); }
   .tab.on { background:var(--ink); color:#fff; border-color:var(--ink); }
   .banner { margin:10px 10px 0; padding:12px; border-radius:12px; background:#fdf3ef; border:1px solid #f0d3c8; font-size:16px; }
@@ -356,15 +357,16 @@ function tickLegend(){ return `<div class="tklg"><span><i class="g">✓</i> ${T(
 const openQ = x => x && (x.kind === 'open' || x.kind === 'way') ? x.q : 0;   // only orders still coming count as "already ordered"
 let OPEN_ORD = {};
 function ordRefresh(){ const k = JSON.stringify(OPEN_ORD); OPEN_ORD = openOrd(); if (JSON.stringify(OPEN_ORD) === k || busy()) return;
-  if (MODE === 'daily' && DATA && $('#body')) redraw(drawList); else if (MODE === 'stock' && SK) redraw(renderStock); }
+  if ((MODE === 'daily' || MODE === 'jjc') && DATA && $('#body')) redraw(drawList); else if (MODE === 'stock' && SK) redraw(renderStock); }
 // ---------- Count list ----------
-let GROUP_SET = false;
+let GROUP_SET = false, DSCOPE = 'bsd';   // Owner / View-only: 'bsd' = Daily tab, 'jj' = Jinjang tab
+const inScope = i => DATA.user.role === 'Jinjang' || (DSCOPE === 'jj') === !!i.jj;
 function render(){
   const u = DATA.user, owner = u.role === 'Owner' || u.role === 'Viewer';
   if (u.role === 'Viewer' && !GROUP_SET && GROUP === 'All' && DATA.items.some(i => i.group === 'Kitchen')) GROUP = 'Kitchen';   // View-only: Kitchen first, tap Bar etc. to change
-  const groups = [...new Set(DATA.items.map(i => i.group))];
+  const groups = [...new Set(DATA.items.filter(inScope).map(i => i.group))];
   $('#app').innerHTML = `
-    <header>${menuBtn()}<h1>${T('title')}</h1>
+    <header>${menuBtn()}<h1>${DSCOPE === 'jj' && u.role !== 'Jinjang' ? T('jjCountT') : T('title')}</h1>
       <button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${acctBtns()}</div></header>
     ${tabsHtml()}
@@ -372,7 +374,7 @@ function render(){
     ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
     ${tickLegend()}<div id="body" class="tkl"></div><div class="spacer"></div>
     <footer><div class="prog" id="prog"></div>
-      <button class="btn clear" onclick="openConfirm()">${T('clear')}</button>
+      ${DSCOPE === 'jj' && u.role !== 'Jinjang' ? '' : `<button class="btn clear" onclick="openConfirm()">${T('clear')}</button>`}
       <button class="btn save" id="save" onclick="save()" disabled>${T('save')}</button></footer>`;
   $('#q').addEventListener('input', e => { FILTER = e.target.value; drawList(); });
   document.querySelectorAll('.chip').forEach(b => b.onclick = () => { GROUP = b.dataset.g; GROUP_SET = true; render(); });
@@ -381,14 +383,16 @@ function render(){
 
 function drawList(){
   const f = FILTER.toLowerCase(); OPEN_ORD = openOrd();
-  const items = DATA.items.filter(i => (GROUP==='All' || i.group===GROUP) &&
+  const items = DATA.items.filter(i => inScope(i) && (GROUP==='All' || DSCOPE==='jj' || i.group===GROUP) &&
     (!f || (i.name+' '+i.zh+' '+i.id+' '+i.hint+' '+i.hintZh).toLowerCase().includes(f)))
     .sort((a, b) => itemName(a).localeCompare(itemName(b), LANG==='zh' ? 'zh-Hans-CN-u-co-pinyin' : 'en', {sensitivity:'base'}));   /* A–Z (Chinese: by pinyin) */
-  const by = {}; items.forEach(i => (by[i.group] = by[i.group] || []).push(i));
-  $('#body').innerHTML = Object.keys(by).map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">` +
+  const gk = i => i.jj ? (i.hint || 'Jinjang') : i.group;   // Jinjang list grouped by vendor
+  const by = {}; items.forEach(i => (by[gk(i)] = by[gk(i)] || []).push(i));
+  const gord = g => DATA.items.findIndex(i => gk(i) === g);   // groups in sheet order (Jinjang: vendor order of the JJCount tab)
+  $('#body').innerHTML = Object.keys(by).sort((a, b) => gord(a) - gord(b)).map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">` +
     by[g].map(i => {
       const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
-      const sub = itemSub(i), hint = itemHint(i);
+      const sub = itemSub(i), hint = i.jj ? '' : itemHint(i);
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min), i.so, i.jj), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
@@ -407,8 +411,8 @@ function drawList(){
 
 function updateFooter(){
   const n = Object.keys(EDITS).length;
-  const done = DATA.items.filter(i => i.counted).length;
-  $('#prog').textContent = T('prog', done, DATA.items.length) + (n ? T('unsaved', n) : '');
+  const sc = DATA.items.filter(inScope), done = sc.filter(i => i.counted).length;
+  $('#prog').textContent = T('prog', done, sc.length) + (n ? T('unsaved', n) : '');
   $('#save').disabled = n === 0; $('#save').textContent = n ? T('saveN', n) : T('save');
 }
 
@@ -521,8 +525,8 @@ function tabsHtml(){
   const u = curUser(), b = (m, t) => `<button class="tab ${MODE===m?'on':''}" onclick="setMode('${m}')">${t}</button>`;
   document.body.classList.toggle('ro', u.role === 'Viewer');   // view-only account: nothing can be typed or tapped to change
   const menu = '';   // ☰ menu moved to the top-left of the header (menuBtn)
-  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
-  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
+  if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('jjc',T('jjTab'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
+  if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('jjc',T('jjTab'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
   if (u.role === 'Jinjang') { const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active), cm = meOn ? 'month' : 'daily';
     return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv') + delivBadge())}</div>`; }
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
@@ -533,11 +537,11 @@ function tabsHtml(){
   return '';
 }
 let MSTACK = [], NOSTACK = false;
-function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else if (m==='dlog') loadDlog(); else showDaily(); }
+function setMode(m){ if (typeof SUSE !== 'undefined' && Object.keys(SUSE).length) flushUse(); MODE_SET = m; MODE = m; FILTER = ''; if (m==='month') loadME(); else if (m==='order') loadOrders(); else if (m==='deliv') loadDeliv(); else if (m==='stock') loadStock(); else if (m==='usage') loadUsage(); else if (m==='dlog') loadDlog(); else { DSCOPE = m === 'jjc' ? 'jj' : 'bsd'; showDaily(); } }
 // Daily tab: show what we already have straight away, refresh quietly behind it
 async function showDaily(){
   if (!DATA) return load();
-  MODE = 'daily'; render();
+  MODE = DSCOPE === 'jj' ? 'jjc' : 'daily'; render();
   refreshDaily();
 }
 // ---------- Quiet refresh: re-draw only if something changed, keep the scroll position ----------
@@ -546,7 +550,7 @@ function redraw(fn){ const y = window.scrollY; fn(); window.scrollTo(0, y); }
 async function refreshDaily(){
   if (!DATA || Object.keys(EDITS).length || (store.get('xym_pending')||'[]') !== '[]') return;
   try { const d = await call('getDaily', PIN);
-    if (MODE!=='daily' || Object.keys(EDITS).length || busy()) return;
+    if ((MODE!=='daily' && MODE!=='jjc') || Object.keys(EDITS).length || busy()) return;
     const changed = JSON.stringify(d.items) !== JSON.stringify(DATA.items) || !!(d.me&&d.me.active) !== !!(DATA.me&&DATA.me.active);
     DATA = d; if (changed) redraw(render);
   } catch(e){}
@@ -570,7 +574,7 @@ async function refreshOrders(){
   } catch(e){}
 }
 // Check for other people's changes every minute, and whenever the app is opened again
-function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); else if (MODE==='stock') refreshStock(); badgeRefresh(); }
+function quietRefresh(){ if (!PIN || document.hidden) return; if (MODE==='daily' || MODE==='jjc') refreshDaily(); else if (MODE==='month') refreshME(); else if (MODE==='order') refreshOrders(); else if (MODE==='deliv') refreshDeliv(); else if (MODE==='stock') refreshStock(); badgeRefresh(); }
 setInterval(quietRefresh, 30000);   // every 30 s while the app is open
 setInterval(() => { if (PIN && !document.hidden && MODE === 'deliv') refreshDeliv(); }, 15000);   // Deliveries tab: check every 15 s
 // Coming back to the app (from the background / another app / phone unlocked) → refresh straight away
@@ -821,7 +825,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -831,7 +835,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -1227,7 +1231,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v71';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v72';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1307,7 +1311,7 @@ async function saveLevels(id){
     [DATA, MD].forEach(d => d && d.items.filter(x => x.id === id).forEach(x => x.lv = r));
     [DV, recall('deliv')].forEach((d, k) => { const x = d && d.items.find(y => y.id === id); if (x) { Object.assign(x, r); if (k) remember('deliv', d); } });
     if (SK) remember('stock', SK);
-    redraw(() => MODE === 'stock' ? renderStock() : MODE === 'month' ? drawME() : MODE === 'daily' ? drawList() : null); }
+    redraw(() => MODE === 'stock' ? renderStock() : MODE === 'month' ? drawME() : (MODE === 'daily' || MODE === 'jjc') ? drawList() : null); }
   catch(e){ toast(String(e.message||e)); }
 }
 // ---------- Owner: swipe an item to the left → 🗑 remove (with Undo) ----------
