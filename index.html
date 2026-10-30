@@ -304,6 +304,7 @@ async function load(){
       it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.at = c.qty===''?'':hhmm(); });
     MODE = 'daily'; render();
     if (DATA.user.role === 'Owner') prefetchOwner(); else if (DATA.user.area === 'Kitchen') prefetchDeliv();
+    setTimeout(prefetchReports, 4000);   // Owner / View-only: reports ready before ☰ is opened
   }
   catch(e){
     const m = String(e.message||e);
@@ -1194,8 +1195,14 @@ async function openStatement(back){
   const ym = ymOf(back);
   $('#sTitle').textContent = T('statement') + ' · ' + ym; $('#sText').innerHTML = `<button class="chip ${back===0?'on':''}" onclick="openStatement(0)">${T('thisMonth')}</button> <button class="chip ${back===1?'on':''}" onclick="openStatement(1)">${T('lastMonth')}</button>`;
   $('#sList').innerHTML = `<div class="empty">${T('loading')}</div>`; $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
-  $('#sum').classList.add('show');
-  try { const s = await call('getStatement', PIN, ym);
+  $('#sum').classList.add('show'); ST_YM = ym;
+  const c = repGet('st' + ym); if (c) drawSt(c, ym);
+  try { const s = await repFetch('st' + ym, 'getStatement', ym); if (ST_YM === ym && $('#sum').classList.contains('show')) drawSt(s, ym); }
+  catch(e){ if (!c) $('#sList').innerHTML = `<div class="empty">${esc(String(e.message||e))}</div>`; }
+}
+let ST_YM = '';
+function drawSt(s, ym){
+  try {
     $('#sList').innerHTML = (s.list.map(o => `<div class="srow"><span>${esc(o.date.slice(8,10)+'/'+o.date.slice(5,7))} · ${esc(o.id)} · ${T('d'+o.dir)}</span><b>${o.dir==='BJ'?'−':''}RM ${o.total.toFixed(2)}</b></div>`).join('') || `<div class="empty">${T('stNone')}</div>`)
       + `<div class="srow tot"><span>${T('stJB')}</span><b>RM ${s.jb.toFixed(2)}</b></div><div class="srow"><span>${T('stBJ')}</span><b>−RM ${s.bj.toFixed(2)}</b></div><div class="srow tot"><span>${T('stNet')}</span><b>RM ${s.net.toFixed(2)}</b></div>`;
     $('#sBtns').innerHTML = `<button class="btn save" id="xBtn" onclick="exportSt('${ym}')">${T('exportX')}</button><button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
@@ -1214,7 +1221,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v68';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v69';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1443,7 +1450,7 @@ window.addEventListener('popstate', () => {
   if (!done) { BACK_AT = Date.now(); toast(T('backExit')); }
   try { history.pushState({ xym:'top' }, ''); } catch(e){}
 });
-function openMenu(){
+function openMenu(){ prefetchReports();
   const u = curUser(), boss = u.role === 'Owner' || u.role === 'Viewer', sw = store.get('xym_owner') && store.get('xym_owner') !== PIN;
   const today = (DATA && DATA.today) || (DV && DV.today) || (SK && SK.today) || (MD && MD.me && MD.me.today) || (OD && OD.today) || '';
   $('#sTitle').textContent = ''; $('#sText').textContent = '';
@@ -1458,10 +1465,27 @@ function openMenu(){
 }
 // ---------- Daily count records (every saved daily count, by day) ----------
 let DLZ = null, DLDAY = '';
+// Reports open at once from the copy kept on the phone, then refresh quietly (Daily records: last 14 days in one call)
+function repGet(k){ try { return JSON.parse(localStorage.getItem('xym_rep_' + k + '_' + PIN) || 'null'); } catch(e){ return null; } }
+function repSet(k, v){ try { localStorage.setItem('xym_rep_' + k + '_' + PIN, JSON.stringify(v)); } catch(e){} return v; }
+const REP_BUSY = {};
+async function repFetch(k, fn, ...a){ if (REP_BUSY[k]) return REP_BUSY[k]; REP_BUSY[k] = call(fn, PIN, ...a).then(d => repSet(k, d)).finally(() => { delete REP_BUSY[k]; }); return REP_BUSY[k]; }
+function prefetchReports(){ const r = curUser().role; if (r !== 'Owner' && r !== 'Viewer') return;
+  repFetch('dlog', 'getDailyLog', '', 14).catch(()=>{}); repFetch('usage' + UDAYS, 'getUsage', UDAYS).catch(()=>{}); repFetch('st' + ymOf(0), 'getStatement', ymOf(0)).catch(()=>{}); }
+function dlogView(all){ const day = DLDAY || (all.days[0] || [])[0] || all.day;
+  return { day, days: all.days, rows: (all.rows || []).filter(r => (r.d || all.day) === day), has: (all.rows || []).some(r => r.d === day) }; }
 async function loadDlog(day){
-  MODE = 'dlog'; if (day !== undefined) DLDAY = day; DLZ = Object.assign({}, DLZ || {}, { loading: true }); renderDlog();
-  try { DLZ = await call('getDailyLog', PIN, DLDAY || ''); DLDAY = DLZ.day; } catch(e){ DLZ = { error: String(e.message||e) }; }
-  if (MODE === 'dlog') renderDlog();
+  MODE = 'dlog'; if (day !== undefined) DLDAY = day;
+  const c = repGet('dlog');
+  if (c) { const v = dlogView(c); if (v.has || !DLDAY) { DLZ = v; renderDlog(); } else { DLZ = Object.assign({}, v, { loading: true }); renderDlog(); } }
+  else { DLZ = { loading: true }; renderDlog(); }
+  try {
+    const all = await repFetch('dlog', 'getDailyLog', '', 14);
+    let v = dlogView(all);
+    if (!v.has && DLDAY) { const one = await call('getDailyLog', PIN, DLDAY); v = { day: DLDAY, days: all.days, rows: one.rows }; }
+    DLZ = v; DLDAY = v.day;
+  } catch(e){ if (!c) DLZ = { error: String(e.message||e) }; }
+  if (MODE === 'dlog') redraw(renderDlog);
 }
 function renderDlog(){
   const z = DLZ || {}, dd = d => d.slice(8,10) + '/' + d.slice(5,7);
@@ -1477,9 +1501,10 @@ function renderDlog(){
 }
 let UZ = null, UDAYS = 7;
 async function loadUsage(days){
-  MODE = 'usage'; if (days) UDAYS = days; UZ = { loading: true }; renderUsage();
-  try { UZ = await call('getUsage', PIN, UDAYS); } catch(e){ UZ = { error: String(e.message||e) }; }
-  if (MODE === 'usage') renderUsage();
+  MODE = 'usage'; if (days) UDAYS = days; const k = 'usage' + UDAYS, c = repGet(k);
+  UZ = c || { loading: true }; renderUsage();
+  let d; try { d = await repFetch(k, 'getUsage', UDAYS); } catch(e){ d = c || { error: String(e.message||e) }; }
+  if ('usage' + UDAYS !== k) return; UZ = d; if (MODE === 'usage') redraw(renderUsage);
 }
 function renderUsage(){
   const f = v => v === '' || v === undefined ? '–' : +(+v).toFixed(2);
