@@ -290,12 +290,10 @@ function logout(){ store.del('xym_owner'); store.del('xym_as'); setTimeout(asBar
 
 async function load(){
   setTimeout(runOutbox, 300);   // deliveries saved on this phone but not yet on the server (app was closed) → send now
-  if (store.get('xym_role') === 'Jinjang') return loadDeliv();
   $('#app').innerHTML = bootHtml();
   try {
     if ((store.get('xym_pending')||'[]') !== '[]') await flush();
     DATA = await call('getDaily', PIN); EDITS = {}; USER = DATA.user; store.set('xym_role', DATA.user.role);
-    if (DATA.user.role === 'Jinjang') return loadDeliv();
     if (MODE_SET === 'deliv' && canDeliv()) return loadDeliv();
     if (DATA.me && DATA.me.active && MODE_SET !== 'daily' && DATA.user.role !== 'Viewer') { MODE = 'month'; return loadME(); }
     if (DATA.user.role !== 'Owner') MODE = 'daily';
@@ -303,7 +301,7 @@ async function load(){
       const it = DATA.items.find(x => x.row===c.row); if (!it) return;
       it.qty = c.qty===''?'':Number(c.qty); it.counted = c.qty!==''; it.at = c.qty===''?'':hhmm(); });
     MODE = 'daily'; render();
-    if (DATA.user.role === 'Owner') prefetchOwner(); else if (DATA.user.area === 'Kitchen') prefetchDeliv();
+    if (DATA.user.role === 'Owner') prefetchOwner(); else if (DATA.user.area === 'Kitchen' || DATA.user.role === 'Jinjang') prefetchDeliv();
     setTimeout(prefetchReports, 4000);   // Owner / View-only: reports ready before ☰ is opened
   }
   catch(e){
@@ -339,18 +337,21 @@ function tsOf(t){ const m = String(t || '').match(/^(?:(\d{1,2})\/(\d{1,2})\s+)?
 // Operating day starts 06:00 (Zayne): counted / received / no-stock ticks reset then; ordered + on the way stay until done
 function opStart(){ const d = new Date(); if (d.getHours() < 6) d.setDate(d.getDate() - 1); d.setHours(6, 0, 0, 0); return d.getTime(); }
 const inDay = t => !!t && tsOf(t) >= opStart();
-function tickOf(id, at, low){
+function tickOf(id, at, low, so, jj){
+  if (jj) return low ? 'low' : inDay(at) ? 'cnt' : '';   // Jinjang's own list: BSD's orders don't apply
   const x = OPEN_ORD[id];
   if (x && x.kind === 'open') return 'ord'; if (x && x.kind === 'way') return 'way';
   if (x && x.kind === 'short' && (!x.at || inDay(x.at))) return 'short';
   if (x && x.kind === 'rcv' && inDay(x.at) && tsOf(at) <= tsOf(x.at) + 60000) return 'rcv';   // received today → blue until the number changes or 06:00
+  if (so && so.at && (!at || tsOf(at) < tsOf(so.at))) { SO_MAP[id] = so; return 'sord'; }   // ordered from a supplier (Order tab) – until counted again
   if (low) return 'low'; return inDay(at) ? 'cnt' : '';
 }
-function tickHtml(k, id){ if (!k) return ''; const c = { cnt:['g'], low:['r'], ord:['g','g'], way:['b','g'], rcv:['b','b'], short:['o','o'] }[k];
+const SO_MAP = {};
+function tickHtml(k, id){ if (!k) return ''; const c = { cnt:['g'], low:['r'], ord:['g','g'], sord:['g','g'], way:['b','g'], rcv:['b','b'], short:['o','o'] }[k];
   return ` <span class="tk" onclick="event.stopPropagation();tickInfo('${k}','${esc(id)}')">${c.map(x => `<i class="${x}">✓</i>`).join('')}</span>`; }
 function tickInfo(k, id){ const x = OPEN_ORD[id], q = x && x.q ? ' ' + (Math.round(x.q * 1000) / 1000) + ' ' + uName(x.unit) : '';
   toast({ cnt: T('tkCnt'), low: T('tkLow'), ord: x ? T('ordered') + ' ' + x.day + q + ' · ' + x.id : '', way: x ? T('onWay') + q + ' · ' + x.id : '',
-    rcv: x ? T('tkRcv') + q + ' · ' + x.id : '', short: x ? T('ordered') + ' ' + x.day + q + ' · ' + T('jjNoStock') + ' · ' + x.id : '' }[k] || ''); }
+    rcv: x ? T('tkRcv') + q + ' · ' + x.id : '', sord: SO_MAP[id] ? T('ordered') + ' ' + SO_MAP[id].at + ' · ' + SO_MAP[id].q + (SO_MAP[id].sup ? ' · ' + SO_MAP[id].sup : '') : '', short: x ? T('ordered') + ' ' + x.day + q + ' · ' + T('jjNoStock') + ' · ' + x.id : '' }[k] || ''); }
 function tickLegend(){ return `<div class="tklg"><span><i class="g">✓</i> ${T('tkCnt')}</span><span><i class="g">✓</i><i class="g">✓</i> ${T('ordered')}</span><span><i class="b">✓</i><i class="g">✓</i> ${T('onWay')}</span><span><i class="b">✓</i><i class="b">✓</i> ${T('tkRcv')}</span><span><i class="o">✓</i><i class="o">✓</i> ${T('jjNoStock')}</span><span><i class="r">✓</i> ${T('tkLow')}</span></div>`; }
 const openQ = x => x && (x.kind === 'open' || x.kind === 'way') ? x.q : 0;   // only orders still coming count as "already ordered"
 let OPEN_ORD = {};
@@ -389,7 +390,7 @@ function drawList(){
       const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
       const sub = itemSub(i), hint = itemHint(i);
       return `<div class="row ${i.counted?'done':'todo'}">
-        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min)), i.id)}</div>
+        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min), i.so, i.jj), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
           <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
@@ -522,6 +523,8 @@ function tabsHtml(){
   const menu = '';   // ☰ menu moved to the top-left of the header (menuBtn)
   if (u.role === 'Viewer') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv'))}${b('stock',T('stockTab'))}</div><div class="robar">👁 ${T('viewOnly')}</div>`;
   if (u.role === 'Owner') return `<div class="tabs">${b('daily',T('daily'))}${b('month',T('month'))}${b('order',T('order'))}${b('deliv',T('deliv') + delivBadge())}${b('stock',T('stockTab'))}${menu}</div>`;
+  if (u.role === 'Jinjang') { const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active), cm = meOn ? 'month' : 'daily';
+    return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv') + delivBadge())}</div>`; }
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
     const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active);
     const cm = meOn ? 'month' : 'daily';
@@ -1224,7 +1227,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v70';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v71';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
