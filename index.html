@@ -324,8 +324,8 @@ function openOrd(){
     o.lines.forEach(l => { if (l.id in m) return;   // newest order wins (list is newest first)
       const req = Number(l.req) || 0, sent = Number(l.sent) || 0, day = ordDay(o.createdAt);
       if (o.status === 'Requested') { if (req > 0 || l.decide) m[l.id] = { kind: 'open', q: req, unit: l.unit, id: o.id, day }; return; }
-      if (o.status === 'Sent') { if (sent > 0) m[l.id] = { kind: 'way', q: sent, unit: l.unit, id: o.id, day, short: req > sent ? req - sent : 0 }; else if (req > 0 && !old(o)) m[l.id] = { kind: 'short', q: req, unit: l.unit, id: o.id, day }; else m[l.id] = null; return; }
-      if (req > 0 && sent < req && !old(o)) { m[l.id] = { kind: 'short', q: req - sent, unit: l.unit, id: o.id, day }; return; }
+      if (o.status === 'Sent') { if (sent > 0) m[l.id] = { kind: 'way', q: sent, unit: l.unit, id: o.id, day, short: req > sent ? req - sent : 0 }; else if (req > 0 && !old(o)) m[l.id] = { kind: 'short', q: req, unit: l.unit, id: o.id, day, at: o.sentAt }; else m[l.id] = null; return; }
+      if (req > 0 && sent < req && !old(o)) { m[l.id] = { kind: 'short', q: req - sent, unit: l.unit, id: o.id, day, at: o.sentAt }; return; }
       const rq = Number(l.recv) || 0; m[l.id] = rq > 0 ? { kind: 'rcv', q: rq, unit: l.unit, id: o.id, day, at: o.receivedAt } : null; }); });
   Object.keys(m).forEach(k => { if (!m[k]) delete m[k]; });
   return m;
@@ -336,12 +336,15 @@ function ordTag(id){ const x = OPEN_ORD[id]; if (!x) return ''; const q = x.q ? 
 // WhatsApp-style ticks: ✓ grey counted today · ✓ red low, not ordered · ✓✓ grey ordered · ✓✓ blue+grey sent · ✓✓ blue received · ✓✓ orange Jinjang no stock
 function tsOf(t){ const m = String(t || '').match(/^(?:(\d{1,2})\/(\d{1,2})\s+)?(\d{1,2}):(\d{2})$/); if (!m) return 0; const d = new Date();
   if (m[1]) { d.setMonth(Number(m[2]) - 1, Number(m[1])); if (d > new Date(Date.now() + 86400000)) d.setFullYear(d.getFullYear() - 1); } d.setHours(Number(m[3]), Number(m[4]), 0, 0); return d.getTime(); }
-const isToday = t => !!t && !/\//.test(String(t));
+// Operating day starts 06:00 (Zayne): counted / received / no-stock ticks reset then; ordered + on the way stay until done
+function opStart(){ const d = new Date(); if (d.getHours() < 6) d.setDate(d.getDate() - 1); d.setHours(6, 0, 0, 0); return d.getTime(); }
+const inDay = t => !!t && tsOf(t) >= opStart();
 function tickOf(id, at, low){
   const x = OPEN_ORD[id];
-  if (x && x.kind === 'open') return 'ord'; if (x && x.kind === 'way') return 'way'; if (x && x.kind === 'short') return 'short';
-  if (x && x.kind === 'rcv' && tsOf(at) <= tsOf(x.at) + 60000) return 'rcv';   // received → blue until the number changes again
-  if (low) return 'low'; return isToday(at) ? 'cnt' : '';
+  if (x && x.kind === 'open') return 'ord'; if (x && x.kind === 'way') return 'way';
+  if (x && x.kind === 'short' && (!x.at || inDay(x.at))) return 'short';
+  if (x && x.kind === 'rcv' && inDay(x.at) && tsOf(at) <= tsOf(x.at) + 60000) return 'rcv';   // received today → blue until the number changes or 06:00
+  if (low) return 'low'; return inDay(at) ? 'cnt' : '';
 }
 function tickHtml(k, id){ if (!k) return ''; const c = { cnt:['g'], low:['r'], ord:['g','g'], way:['b','g'], rcv:['b','b'], short:['o','o'] }[k];
   return ` <span class="tk" onclick="event.stopPropagation();tickInfo('${k}','${esc(id)}')">${c.map(x => `<i class="${x}">✓</i>`).join('')}</span>`; }
@@ -386,7 +389,7 @@ function drawList(){
       const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
       const sub = itemSub(i), hint = itemHint(i);
       return `<div class="row ${i.counted?'done':'todo'}">
-        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, i.counted && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min)), i.id)}</div>
+        <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min)), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
           <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
@@ -1221,7 +1224,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v69';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v70';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
