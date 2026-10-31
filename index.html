@@ -287,7 +287,7 @@ async function tryLogin(){
   try { const u = await call('login', p); PIN = p; store.set('xym_pin', p); store.set('xym_role', u && u.role || ''); USER = u; load(); }
   catch(e){ const msg = String(e && e.message || e || ''); $('#err').textContent = msg.includes('PIN') ? T('wrongPin') : T('noConn') + ' – ' + msg; }
 }
-function logout(){ store.del('xym_owner'); store.del('xym_as'); setTimeout(asBar, 0); store.del('xym_pin'); store.del('xym_role'); PIN=null; DATA=null; MD=null; OD=null; DV=null; SK=null; SEDITS={}; DVIEW=null; USER=null; MODE='daily'; MODE_SET=''; showLogin(); }
+function logout(){ { const s = pushSaved(); if (s && s.pin === PIN) pushOff(true); } store.del('xym_owner'); store.del('xym_as'); setTimeout(asBar, 0); store.del('xym_pin'); store.del('xym_role'); PIN=null; DATA=null; MD=null; OD=null; DV=null; SK=null; SEDITS={}; DVIEW=null; USER=null; MODE='daily'; MODE_SET=''; showLogin(); }
 
 async function load(){
   setTimeout(runOutbox, 300);   // deliveries saved on this phone but not yet on the server (app was closed) → send now
@@ -830,7 +830,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', noodleFri:'Friday – noodle supplier comes to BSD, no Jinjang order', meFill:'from month-end count', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', noodleFri:'Friday – noodle supplier comes to BSD, no Jinjang order', meFill:'from month-end count', pushT:'Notifications', pushOnL:'On', pushOffL:'Off', pushTestL:'Send a test notification', pushSent:'Test sent ✓ – it should pop up in a few seconds', pushOnOk:'Notifications on ✓', pushOffOk:'Notifications off', pushDenied:'Notifications are blocked – allow them for this app in the phone settings', pushNo:'This phone / browser cannot get notifications', pushIos:'iPhone: tap Share → Add to Home Screen, open the app from the Home Screen, then turn on', pushFail:'Could not turn on –', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -840,7 +840,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', noodleFri:'星期五 – 面佬直接送 BSD，不用向增江订', meFill:'来自月底盘点', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', noodleFri:'星期五 – 面佬直接送 BSD，不用向增江订', meFill:'来自月底盘点', pushT:'通知', pushOnL:'已开', pushOffL:'已关', pushTestL:'发一个测试通知', pushSent:'已发送 ✓ – 几秒内会弹出', pushOnOk:'通知已开启 ✓', pushOffOk:'通知已关闭', pushDenied:'通知被阻止了 – 请在手机设置里允许这个 App 的通知', pushNo:'这部手机 / 浏览器不能接收通知', pushIos:'iPhone：先点「分享」→「添加到主屏幕」，从主屏幕打开 App，再开启', pushFail:'开启失败 –', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -1236,7 +1236,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v75';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v76';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1468,11 +1468,47 @@ window.addEventListener('popstate', () => {
   if (!done) { BACK_AT = Date.now(); toast(T('backExit')); }
   try { history.pushState({ xym:'top' }, ''); } catch(e){}
 });
+// ---------- Phone notifications (Firebase Cloud Messaging, free) – only in the installed app / browser, not inside Google's page ----------
+const FB_CFG = { apiKey:'AIzaSyBp09r52CtOxD49P6yyOl09k7Pqt64psfg', authDomain:'xym-inventory.firebaseapp.com', projectId:'xym-inventory',
+  storageBucket:'xym-inventory.firebasestorage.app', messagingSenderId:'294158218360', appId:'1:294158218360:web:a060c5f15bc0620f49298d' };
+const FB_VAPID = 'BHCAH_MQnJk1GmRuJkuavwWF3POpgFnKya45k9sOz5p_wE0qdkRGjSOQXTcUsqtTpQ02pm5tBjNAwh1WT3gY9ME', FB_V = '10.12.2';
+let FBM = null;
+const isIOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent);
+const pushOk = () => !(window.google && google.script && google.script.run) && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const pushRole = u => (u.role === 'Owner' || u.role === 'Jinjang' || (u.area === 'Kitchen' && u.role !== 'Viewer')) && !(store.get('xym_owner') && store.get('xym_owner') !== PIN);
+function pushSaved(){ try { return JSON.parse(store.get('xym_push') || 'null'); } catch(e){ return null; } }
+const pushIsOn = () => { const s = pushSaved(); return !!(s && s.pin === PIN && window.Notification && Notification.permission === 'granted'); };
+async function pushToken(){
+  if (!FBM) { const A = await import(`https://www.gstatic.com/firebasejs/${FB_V}/firebase-app.js`), M = await import(`https://www.gstatic.com/firebasejs/${FB_V}/firebase-messaging.js`);
+    FBM = { m: M.getMessaging(A.initializeApp(FB_CFG)), M }; }
+  return FBM.M.getToken(FBM.m, { vapidKey: FB_VAPID, serviceWorkerRegistration: await navigator.serviceWorker.ready });
+}
+async function pushOn(){
+  if (!pushOk() || (isIOS() && !navigator.standalone)) { toast(T(isIOS() ? 'pushIos' : 'pushNo')); return; }
+  closeSum(); toast(T('working'));
+  try {
+    const p = await Notification.requestPermission(); if (p !== 'granted') { toast(T('pushDenied')); return; }
+    const t = await pushToken(); await call('pushReg', PIN, t, true);
+    store.set('xym_push', JSON.stringify({ t, pin: PIN, d: new Date().toDateString() })); toast(T('pushOnOk'));
+  } catch(e){ toast(T('pushFail') + ' ' + String(e && e.message || e)); }
+}
+async function pushOff(quiet){ const s = pushSaved(); store.del('xym_push'); if (!quiet) { closeSum(); toast(T('pushOffOk')); }
+  if (s) { try { await call('pushReg', s.pin, s.t, false); } catch(e){} } }
+async function pushTestNow(){ const s = pushSaved(); if (!s) return; closeSum(); toast(T('working'));
+  try { await call('pushTest', PIN, s.t); toast(T('pushSent')); } catch(e){ toast(T('pushFail') + ' ' + String(e && e.message || e)); } }
+async function pushRefresh(){   // once a day: the phone's push address can change – send the new one
+  const s = pushSaved(); if (!s || s.pin !== PIN || !pushOk() || Notification.permission !== 'granted' || s.d === new Date().toDateString()) return;
+  try { const t = await pushToken(); if (t !== s.t) { await call('pushReg', PIN, s.t, false).catch(()=>{}); } await call('pushReg', PIN, t, true);
+    store.set('xym_push', JSON.stringify({ t, pin: PIN, d: new Date().toDateString() })); } catch(e){}
+}
+function pushRows(u){ if (!pushRole(u) || (window.google && google.script && google.script.run)) return ''; const on = pushIsOn();
+  return `<div class="srow pick" onclick="${on ? 'pushOff()' : 'pushOn()'}"><span>🔔 ${T('pushT')}</span><b class="sub">${T(on ? 'pushOnL' : 'pushOffL')} ›</b></div>` +
+    (on ? `<div class="srow pick" onclick="pushTestNow()"><span>📨 ${T('pushTestL')}</span><b class="sub">›</b></div>` : ''); }
 function openMenu(){ prefetchReports();
   const u = curUser(), boss = u.role === 'Owner' || u.role === 'Viewer', sw = store.get('xym_owner') && store.get('xym_owner') !== PIN;
   const today = (DATA && DATA.today) || (DV && DV.today) || (SK && SK.today) || (MD && MD.me && MD.me.today) || (OD && OD.today) || '';
   $('#sTitle').textContent = ''; $('#sText').textContent = '';
-  $('#sList').innerHTML = `<div class="macct"><b>👤 ${esc(areaName(whoKey(u)))}</b><span class="sub">${esc(today)} · ${APP_V}</span></div>` +
+  $('#sList').innerHTML = `<div class="macct"><b>👤 ${esc(areaName(whoKey(u)))}</b><span class="sub">${esc(today)} · ${APP_V}</span></div>` + pushRows(u) +
     (boss ? `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openUsage('dlog')"><span>📋 ${T('dlogT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>` : '') +
@@ -1584,7 +1620,9 @@ function saveStock(){
 }
 
 PIN = store.get('xym_pin'); asBar();
-if (PIN) load(); else showLogin();
+if (new URLSearchParams(location.search).get('go') === 'deliv') { MODE_SET = 'deliv'; try { history.replaceState(null, '', location.pathname); } catch(e){} }   // opened from a delivery notification
+if (PIN) { load(); setTimeout(pushRefresh, 6000); } else showLogin();
+if ('serviceWorker' in navigator) navigator.serviceWorker.addEventListener('message', e => { if (e.data && e.data.push && PIN && canDeliv()) setMode('deliv'); });   // notification tapped while the app is open
 </script>
 <script>
 if ('serviceWorker' in navigator) window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
