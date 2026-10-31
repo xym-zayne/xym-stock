@@ -262,7 +262,7 @@ const TXT = {
         countedToday:'今天已点', underMin:(t,m)=>`⚠ 总数 ${t} – 少于最低订量 ${m}，供应商可能不送`,
         sendWa:'用 WhatsApp 发送', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', markOrdered:'标记为已订', noWa:'这个供应商没有 WhatsApp – 当面或打电话告诉他上面的清单，然后点「标记为已订」。', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
 };
-const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江', 'View only':'只能查看' };
+const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江', 'View only':'只能查看', 'Month-End':'月底盘点' };
 function whoKey(u){ u = u || {}; return u.role === 'Owner' ? 'Owner' : u.role === 'Jinjang' ? 'Jinjang' : u.role === 'Viewer' ? 'View only' : u.area; }
 function T(k, ...a){ const v = TXT[LANG][k]; return typeof v === 'function' ? v(...a) : v; }
 function areaName(a){ return LANG==='zh' ? (AREA_ZH[a] || a) : a; }
@@ -400,7 +400,7 @@ function drawList(){
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min), i.so, i.jj), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.mef ? ' · <b style="color:var(--blue,#1a73e8)">'+T('meFill')+'</b>' : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
       </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
   swipeRows();
@@ -830,7 +830,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
   newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', noodleFri:'Friday – noodle supplier comes to BSD, no Jinjang order', meFill:'from month-end count', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
 Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
@@ -840,7 +840,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
   newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', noodleFri:'星期五 – 面佬直接送 BSD，不用向增江订', meFill:'来自月底盘点', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -916,7 +916,7 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 function newDO(mode, auto){
   DVIEW = { kind:'new', mode, auto: !!auto }; DNOTE = '';
   DLINES = mode === 'order' && auto ? DV.items.filter(i => i.dj || ((i.stock || i.jj) && (i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0))   /* only items Jinjang supplies (TransferItems / Stock tab) – not Soya, Sugar Cane etc. from other suppliers */.map(i => newLine(i, true, true)).filter(l => l.qty !== '0') : [];   /* nothing needed (0) → not shown */   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
-  if (DVIEW.auto) { const oo = openOrd(); DLINES = DLINES.map(l => { const x = oo[l.id]; if (openQ(x) && l.qty !== '' && !isNaN(Number(l.qty))) l.qty = String(Math.max(0, Math.ceil(Number(l.qty) - openQ(x)))); return l; }).filter(l => l.qty !== '0'); }   // already ordered → not again
+  if (DVIEW.auto) { const oo = openOrd(); DLINES = DLINES.filter(l => !skipNoodle(l.info || {})).map(l => { const x = oo[l.id]; if (openQ(x) && l.qty !== '' && !isNaN(Number(l.qty))) l.qty = String(Math.max(0, Math.ceil(Number(l.qty) - openQ(x)))); return l; }).filter(l => l.qty !== '0'); }   // already ordered → not again
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -1236,7 +1236,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v73';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v75';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1363,6 +1363,9 @@ let SK = null, SEDITS = {}, SGRP = 'Jinjang';
 try { SGRP = localStorage.getItem('xym_sgrp') || 'Jinjang'; } catch(e){}
 const SGROUPS = ['Jinjang', 'Noodle'];   // pages. The Jinjang page shows 2 sections: Jinjang-made (Jinjang) + Bought-in (Bought)
 const grpOf = i => i.grp === 'Noodle' ? 'Noodle' : i.grp === 'Bought' ? 'Bought' : 'Jinjang';
+// Friday (operating day, 06:00→06:00, so the after-closing order still counts as Friday): the noodle supplier comes to BSD → no noodles in the Order from Jinjang
+const noNoodleDay = () => new Date(Date.now() - 6 * 3600000).getDay() === 5;
+const skipNoodle = i => noNoodleDay() && (i.grp === 'Noodle' || i.sg === 'Noodle');
 const pageOf = i => grpOf(i) === 'Noodle' ? 'Noodle' : 'Jinjang';
 let ADDG = 'Jinjang';   // + Add item on the Jinjang page: into Jinjang-made or Bought-in
 const uName = u => LANG === 'zh' ? (UNIT_ZH[String(u).toLowerCase()] || u) : u;
@@ -1383,13 +1386,13 @@ async function refreshStock(){
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
 function renderStock(){ OPEN_ORD = openOrd();
   const u = curUser(), who = whoKey(u), boss = isBoss();
-  const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
+  const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0 && !skipNoodle(i)).length;
   const two = SGRP === 'Jinjang';
   const rows = items.map((i, k) => (two && (k === 0 || grpOf(items[k-1]) !== grpOf(i)) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '') + (() => {
     const old = i.qty === '', unit = esc(uName(i.unit)), nd = stockNeed(i);   // any change of the number (count, −1, received) = updated
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
       i.at ? `${T('updated')} ${esc(i.at)}` : '',
-      nd > 0 && !openQ(OPEN_ORD[i.id]) ? `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>` : '',
+      nd > 0 && !openQ(OPEN_ORD[i.id]) ? (skipNoodle(i) ? `<b style="color:var(--brand)">${T('noodleFri')}</b>` : `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>`) : '',
       boss ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
     return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}${tickHtml(tickOf(i.id, i.at, nd > 0), i.id)}</div><div class="meta">${meta}</div></div>
@@ -1542,7 +1545,7 @@ function renderUsage(){
 // Order button → confirmation first (what is low), then on to Order from Jinjang
 function askStockOrder(){
   const eff = i => (i.id in SEDITS && SEDITS[i.id] !== '' && !isNaN(Number(SEDITS[i.id]))) ? Object.assign({}, i, { qty: Number(SEDITS[i.id]) }) : i;
-  const oo = openOrd(), ord = ['Jinjang', 'Bought', 'Noodle'], list = SK.items.map(eff).filter(i => stockNeed(i) - openQ(oo[i.id]) > 0).sort((a, b) => ord.indexOf(grpOf(a)) - ord.indexOf(grpOf(b)));
+  const oo = openOrd(), ord = ['Jinjang', 'Bought', 'Noodle'], list = SK.items.map(eff).filter(i => !skipNoodle(i) && stockNeed(i) - openQ(oo[i.id]) > 0).sort((a, b) => ord.indexOf(grpOf(a)) - ord.indexOf(grpOf(b)));
   $('#sTitle').textContent = T('ordAskT'); $('#sText').textContent = '';
   $('#sList').innerHTML = list.map((i, k) => (k === 0 || grpOf(list[k-1]) !== grpOf(i) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '')
       + `<div class="srow"><span>${lineName(i)}</span><b>${esc(Math.ceil(stockNeed(i) - openQ(oo[i.id])))} ${esc(uName(i.unit))}</b></div>`).join('') || `<div class="empty">${T('ordAskNone')}</div>`;
