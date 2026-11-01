@@ -397,8 +397,8 @@ function render(){
 
 // ---------- "Regular Barang" note (Kitchen) – same list and order as Zayne's phone note, numbers always the latest count ----------
 const NOTE_LIST = [['RM047','fishcake'],['RM051','fuchok roll'],['RM052','Crispy Fuchok'],['RM050','Fuchok masak'],['RM079','Tofu puff'],['RM039','Char Siu'],
-  ['RM054','Kelapa'],['RM055','Kelapa susu'],['RM077','Tauke','kg'],['RM074','Sayur Manis'],['RM041','Choy Sum'],['RM036','Wantan'],['RM082','Udang'],
-  ['RM072','Pork Slice'],['RM063','Minched Pork Ball'],['RM071','Pork Meat ball'],['RM046','Fish Ball']];
+  ['RM054','Kelapa'],['RM055','Kelapa susu'],['RM077','Tauke','kg'],['RM074','Sayur Manis'],['RM041','Choy Sum'],['RM036','Wonton'],['RM082','Udang'],
+  ['RM072','Pork Slice'],['RM063','Minced Pork Ball'],['RM071','Pork Meat ball'],['RM046','Fish Ball']];
 function fracTxt(v){ if (v === '' || v === null || v === undefined || isNaN(Number(v))) return '–'; const n = Number(v), w = Math.floor(n), f = Math.round((n - w) * 100) / 100;
   const fr = { 0.25:'¼', 0.5:'½', 0.75:'¾' }[f]; return fr ? (w ? w + '.' + fr : fr) : String(+n.toFixed(2)); }   // 2.½ like the phone note
 function noteLines(){
@@ -1278,7 +1278,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v81';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v82';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
