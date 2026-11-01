@@ -384,7 +384,7 @@ function render(){
       <button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${acctBtns()}</div></header>
     ${tabsHtml()}
-    <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}">${DSCOPE !== 'jj' && DATA.items.some(i => !i.jj && i.group === 'Kitchen') ? `<button class="btn ghost" style="flex:none;padding:0 14px" onclick="openNote()">📝 ${T('noteBtn')}</button>` : ''}</div>
+    <div class="tools"><input id="q" placeholder="${T('search')}" value="${esc(FILTER)}">${(owner || u.area === 'Kitchen') && DSCOPE !== 'jj' && DATA.items.some(i => !i.jj && i.group === 'Kitchen') ? `<button class="btn ghost" style="flex:none;padding:0 14px" onclick="openNote()">📝 ${T('noteBtn')}</button>` : ''}</div>
     ${owner && groups.length > 1 ? `<div class="chips">${['All',...groups].map(g=>`<button class="chip ${g===GROUP?'on':''}" data-g="${esc(g)}">${esc(g==='All'?T('all'):areaName(g))}</button>`).join('')}</div>` : ''}
     ${tickLegend()}<div id="body" class="tkl"></div><div class="spacer"></div>
     <footer><div class="prog" id="prog"></div>
@@ -1278,7 +1278,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v79';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v81';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
