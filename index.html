@@ -31,6 +31,7 @@
   .tools { padding:10px 14px 0; display:flex; gap:8px; }
   .row.vrow { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; }
   .row.vrow .vn { font-size:20px; font-weight:600; line-height:1.25; }
+  .row.vrow .vs { font-size:17px; font-weight:500; color:#777; }
   .row.vrow .vq { font-size:26px; font-weight:800; white-space:nowrap; text-align:right; }
   .row.vrow .vq small { font-size:16px; font-weight:600; color:var(--muted,#777); }
   .row.vrow.old .vq { color:#9a9a9a; }
@@ -286,7 +287,7 @@ const uBoth = u => { const z = LANG === 'zh' && (typeof UNIT_ZH !== 'undefined')
 const zhUnits = s => String(s || '').replace(/[A-Za-z]+/g, w => (typeof UNIT_ZH !== 'undefined' && UNIT_ZH[w.toLowerCase()]) || w);
 const isViewer = () => { const u = curUser(); return u.role === 'Viewer'; };
 // View-only account: plain list – name on the left, number + unit on the right in big letters (no description)
-function vRow(name, q, uom, old){ return `<div class="row vrow${old ? ' old' : ''}"><div class="vn">${esc(name)}</div><div class="vq">${q === '' || q === undefined ? '–' : esc(q)} <small>${esc(uBoth(uom))}</small></div></div>`; }
+function vRow(name, q, uom, old, sub){ return `<div class="row vrow${old ? ' old' : ''}"><div class="vn">${esc(name)}${sub ? ` <span class="vs">${esc(sub)}</span>` : ''}</div><div class="vq">${q === '' || q === undefined ? '–' : esc(q)} <small>${esc(uBoth(uom))}</small></div></div>`; }
 function itemSub(i){ return LANG==='zh' ? (i.zh ? i.name : '') : i.zh; }
 function itemHint(i){ return LANG==='zh' && i.hintZh ? zhUnits(i.hintZh) : i.hint; }
 function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (typeof asBar === 'function') asBar(); if (MODE==='usage') renderUsage(); else if (MODE==='dlog' && DLZ) renderDlog(); else if (MODE==='stock' && SK) renderStock(); else if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (MODE==='deliv' && DV) renderDeliv(); else if (DATA) render(); else showLogin(); }
@@ -449,7 +450,7 @@ function drawList(){
     by[g].map(i => {
       const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
       const sub = itemSub(i), hint = i.jj ? '' : itemHint(i);
-      if (isViewer()) return vRow(itemName(i), i.qty, i.uom, !i.counted);
+      if (isViewer()) return vRow(itemName(i), i.qty, i.uom, !i.counted, itemSub(i));
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min), i.so, i.jj), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
@@ -708,7 +709,7 @@ function drawME(){
     g.map(i => {
       const val = (i.row in MEDITS) ? MEDITS[i.row] : (i.qty===''?'':i.qty);
       const sub = itemSub(i), hint = itemHint(i);
-      if (isViewer()) return vRow(itemName(i), i.counted ? i.qty : i.last, i.uom, !i.counted);
+      if (isViewer()) return vRow(itemName(i), i.counted ? i.qty : i.last, i.uom, !i.counted, itemSub(i));
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhotoME(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
@@ -1290,7 +1291,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v84';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v85';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
