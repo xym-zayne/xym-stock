@@ -1221,7 +1221,7 @@ async function doAct(fn, recv, okMsg, later){
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
 // ---------- WhatsApp notice to the other side (language set per receiver in the Notify tab) ----------
-const UNIT_ZH = { jar:'瓶', sachet:'小包', box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', ctn:'箱', set:'套', pkt:'包', btl:'瓶', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个', roll:'卷', tong:'桶', cylinder:'桶' };
+const UNIT_ZH = { jar:'瓶', sachet:'小包', box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', ctn:'箱', set:'包', pkt:'包', btl:'瓶', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个', roll:'卷', tong:'桶', cylinder:'桶' };
 function noticeText(o, kind, lang){
   const one = (zh) => { const ls = o.lines.slice().sort((a, b) => GORD.indexOf(lineGrp(a.id)) - GORD.indexOf(lineGrp(b.id)));
     const many = new Set(ls.map(l => lineGrp(l.id))).size > 1; let last = '';
@@ -1291,7 +1291,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v85';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v86';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
