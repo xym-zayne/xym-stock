@@ -287,7 +287,7 @@ const uBoth = u => { const z = LANG === 'zh' && (typeof UNIT_ZH !== 'undefined')
 const zhUnits = s => String(s || '').replace(/[A-Za-z]+/g, w => (typeof UNIT_ZH !== 'undefined' && UNIT_ZH[w.toLowerCase()]) || w);
 const isViewer = () => { const u = curUser(); return u.role === 'Viewer'; };
 // View-only account: plain list – name on the left, number + unit on the right in big letters (no description)
-function vRow(name, q, uom, old, sub){ return `<div class="row vrow${old ? ' old' : ''}"><div class="vn">${esc(name)}${sub ? ` <span class="vs">${esc(sub)}</span>` : ''}</div><div class="vq">${q === '' || q === undefined ? '–' : esc(q)} <small>${esc(uBoth(uom))}</small></div></div>`; }
+function vRow(name, q, uom, old, sub){ return `<div class="row vrow${old ? ' old' : ''}"><div class="vn">${esc(name)}${sub ? ` <span class="vs">${esc(sub)}</span>` : ''}</div><div class="vq">${q === '' || q === undefined ? '–' : esc(q)} <small>${esc(String(uBoth(uom)).toUpperCase())}</small></div></div>`; }
 function itemSub(i){ return LANG==='zh' ? (i.zh ? i.name : '') : i.zh; }
 function itemHint(i){ return LANG==='zh' && i.hintZh ? zhUnits(i.hintZh) : i.hint; }
 function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (typeof asBar === 'function') asBar(); if (MODE==='usage') renderUsage(); else if (MODE==='dlog' && DLZ) renderDlog(); else if (MODE==='stock' && SK) renderStock(); else if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (MODE==='deliv' && DV) renderDeliv(); else if (DATA) render(); else showLogin(); }
@@ -1291,7 +1291,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v86';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v87';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1449,6 +1449,7 @@ function renderStock(){ OPEN_ORD = openOrd();
       i.at ? `${T('updated')} ${esc(i.at)}` : '',
       nd > 0 && !openQ(OPEN_ORD[i.id]) ? (skipNoodle(i) ? `<b style="color:var(--brand)">${T('noodleFri')}</b>` : `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>`) : '',
       boss ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
+    if (isViewer()) return vRow(itemName(i), i.qty, i.unit, old, itemSub(i));   // View-only: same big list as Daily
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
     return swipeWrap(i.id, `<div class="row ${old?'todo':'done'}"><div class="info"><div class="name">${lineName(i)}${tickHtml(tickOf(i.id, i.at, nd > 0), i.id)}</div><div class="meta">${meta}</div></div>
       <button class="btn ghost use1" onclick="useOne('${esc(i.id)}')">${T('use1')}</button>
@@ -1458,7 +1459,7 @@ function renderStock(){ OPEN_ORD = openOrd();
   $('#app').innerHTML = `<header>${menuBtn()}<h1>${T('stockTitle')}</h1><button class="lang" onclick="switchLang()">${T('other')}</button>
       <div class="who">${acctBtns()}</div></header>${tabsHtml()}${chips}
     ${boss ? `<div class="dbtns"><button class="btn ghost" onclick="openAddStock()">${T('addStock')}</button></div>` : ''}
-    <div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>${tickLegend()}
+    ${isViewer() ? '' : `<div class="cmeta" style="padding:10px 14px 0">${T('stockHelp')}</div>`}${tickLegend()}
     <div class="list tkl" style="margin-top:10px">${rows || `<div class="empty">${T('noStock')}</div>`}</div><div class="spacer"></div>
     <footer><button class="btn ${nAll?'save':'ghost'}" onclick="askStockOrder()">${T('orderN', nAll)}</button><button class="btn save" id="ssave" onclick="saveStock()" ${Object.keys(SEDITS).length?'':'disabled'}>${T('saveCheck', Object.keys(SEDITS).length)}</button></footer>`;
   document.querySelectorAll('#app .qty').forEach(inp => inp.addEventListener('input', e => {
