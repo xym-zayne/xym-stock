@@ -29,6 +29,11 @@
   #sTitle:empty { display:none; }
   header button { border:0; background:none; color:var(--muted); font-size:14px; text-decoration:underline; padding:0; }
   .tools { padding:10px 14px 0; display:flex; gap:8px; }
+  .row.vrow { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:14px 16px; }
+  .row.vrow .vn { font-size:20px; font-weight:600; line-height:1.25; }
+  .row.vrow .vq { font-size:26px; font-weight:800; white-space:nowrap; text-align:right; }
+  .row.vrow .vq small { font-size:16px; font-weight:600; color:var(--muted,#777); }
+  .row.vrow.old .vq { color:#9a9a9a; }
   #noteView { display:none; position:fixed; inset:0; z-index:60; background:#000; color:#f2f2f2; overflow-y:auto; padding:0 26px 40px; font-family:system-ui,-apple-system,Roboto,sans-serif; }
   #noteView.show { display:block; }
   #noteView .nvBar { display:flex; align-items:center; gap:22px; height:64px; position:sticky; top:0; background:#000; }
@@ -277,9 +282,14 @@ function whoKey(u){ u = u || {}; return u.role === 'Owner' ? 'Owner' : u.role ==
 function T(k, ...a){ const v = TXT[LANG][k]; return typeof v === 'function' ? v(...a) : v; }
 function areaName(a){ return LANG==='zh' ? (AREA_ZH[a] || a) : a; }
 function itemName(i){ return LANG==='zh' && i.zh ? i.zh : i.name; }
+const uBoth = u => { const z = LANG === 'zh' && (typeof UNIT_ZH !== 'undefined') && UNIT_ZH[String(u || '').toLowerCase()]; return z || (u || ''); };   // English mode: TIN · 中文: 罐 (no mixing)
+const zhUnits = s => String(s || '').replace(/[A-Za-z]+/g, w => (typeof UNIT_ZH !== 'undefined' && UNIT_ZH[w.toLowerCase()]) || w);
+const isViewer = () => { const u = curUser(); return u.role === 'Viewer'; };
+// View-only account: plain list – name on the left, number + unit on the right in big letters (no description)
+function vRow(name, q, uom, old){ return `<div class="row vrow${old ? ' old' : ''}"><div class="vn">${esc(name)}</div><div class="vq">${q === '' || q === undefined ? '–' : esc(q)} <small>${esc(uBoth(uom))}</small></div></div>`; }
 function itemSub(i){ return LANG==='zh' ? (i.zh ? i.name : '') : i.zh; }
-function itemHint(i){ return LANG==='zh' && i.hintZh ? i.hintZh : i.hint; }
-function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (MODE==='usage') renderUsage(); else if (MODE==='dlog' && DLZ) renderDlog(); else if (MODE==='stock' && SK) renderStock(); else if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (MODE==='deliv' && DV) renderDeliv(); else if (DATA) render(); else showLogin(); }
+function itemHint(i){ return LANG==='zh' && i.hintZh ? zhUnits(i.hintZh) : i.hint; }
+function switchLang(){ LANG = LANG==='en' ? 'zh' : 'en'; store.set('xym_lang', LANG); applyStatic(); if (typeof asBar === 'function') asBar(); if (MODE==='usage') renderUsage(); else if (MODE==='dlog' && DLZ) renderDlog(); else if (MODE==='stock' && SK) renderStock(); else if (MODE==='month' && MD) renderME(); else if (MODE==='order' && OD) renderOrders(); else if (MODE==='deliv' && DV) renderDeliv(); else if (DATA) render(); else showLogin(); }
 function applyStatic(){ $('#cCancel').textContent=T('cancel'); $('#cOk').textContent=T('clear'); $('#pClose').textContent=T('close'); }
 
 // ---------- Login ----------
@@ -439,10 +449,11 @@ function drawList(){
     by[g].map(i => {
       const val = (i.row in EDITS) ? EDITS[i.row] : (i.counted ? i.qty : '');   /* not counted today → empty box, last count shown grey */
       const sub = itemSub(i), hint = i.jj ? '' : itemHint(i);
+      if (isViewer()) return vRow(itemName(i), i.qty, i.uom, !i.counted);
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min), i.so, i.jj), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.uom)}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.mef ? ' · <b style="color:var(--blue,#1a73e8)">'+T(i.mef === 'est' ? 'meEst' : 'meFill')+'</b>' : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(uBoth(i.uom))}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.mef ? ' · <b style="color:var(--blue,#1a73e8)">'+T(i.mef === 'est' ? 'meEst' : 'meFill')+'</b>' : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
       </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
   swipeRows();
@@ -697,10 +708,11 @@ function drawME(){
     g.map(i => {
       const val = (i.row in MEDITS) ? MEDITS[i.row] : (i.qty===''?'':i.qty);
       const sub = itemSub(i), hint = itemHint(i);
+      if (isViewer()) return vRow(itemName(i), i.counted ? i.qty : i.last, i.uom, !i.counted);
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhotoME(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(i.uom)}${i.last!=='' && !i.counted ? ' · '+T('last')+': '+esc(i.last) : ''}${i.lv && isBoss() ? lvLink(i, '') : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(i.id)} · ${esc(uBoth(i.uom))}${i.last!=='' && !i.counted ? ' · '+T('last')+': '+esc(i.last) : ''}${i.lv && isBoss() ? lvLink(i, '') : ''}</div></div>
         <input class="qty ${(i.row in MEDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="–" ${on?'':'disabled'}>
       </div>`; }).join('') + '</div>'; }).join('') || `<div class="empty">${T('noItems')}</div>`;
   document.querySelectorAll('.qty').forEach(inp => inp.addEventListener('input', e => {
@@ -838,7 +850,7 @@ function card(s, si){
       : `<div class="cmeta">${esc(T('delivery', OD.tomorrow.label))}${s.beforeOff ? '<br>'+esc(T('beforeOff')) : ''}${s.orderedToday ? '<br><span class="ok">'+T('orderedToday')+'</span>' : ''}</div>`;
     const rows = s.lines.map((l, li) => `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
-          <div class="meta">${T('onHand')}: <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(l.uom)} · ${T('par')} ${esc(l.target)}
+          <div class="meta">${T('onHand')}: <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(uBoth(l.uom))} · ${T('par')} ${esc(l.target)}
             · ${l.countedToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${esc(T('notToday', l.when ? l.when.slice(8,10)+'/'+l.when.slice(5,7) : ''))}</span>`}</div></div>
         <input class="qty" inputmode="numeric" data-s="${si}" data-l="${li}" value="${esc(l.qty)}"></div>`).join('');
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
@@ -1208,7 +1220,7 @@ async function doAct(fn, recv, okMsg, later){
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
 // ---------- WhatsApp notice to the other side (language set per receiver in the Notify tab) ----------
-const UNIT_ZH = { box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', ctn:'箱', set:'套', pkt:'包', btl:'瓶', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个', roll:'卷', tong:'桶', cylinder:'桶' };
+const UNIT_ZH = { jar:'瓶', sachet:'小包', box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', ctn:'箱', set:'套', pkt:'包', btl:'瓶', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个', roll:'卷', tong:'桶', cylinder:'桶' };
 function noticeText(o, kind, lang){
   const one = (zh) => { const ls = o.lines.slice().sort((a, b) => GORD.indexOf(lineGrp(a.id)) - GORD.indexOf(lineGrp(b.id)));
     const many = new Set(ls.map(l => lineGrp(l.id))).size > 1; let last = '';
@@ -1278,7 +1290,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v82';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v84';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
