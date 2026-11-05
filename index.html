@@ -252,7 +252,7 @@ const TXT = {
         meAuto:'Opens by itself on the dates in the MonthEndDates tab.', total:'Total', making:'Making Excel file…',
         download:'Download Excel', openSheet:'Open in Google Sheets', started:'Month-end started', closedMsg:'Month-end closed',
         sumTitle:'Month-End Summary', sumText:(d,n)=>`${d}/${n} lines counted · value = qty × unit price`, closeConfirm:'Close month-end? Staff go back to the daily count.',
-        order:'Order', orderTitle:'Supplier Order', jjLbl:'Jinjang', bsdLbl:'BSD', toJJ:'To Jinjang', toBSD:'To BSD', toBoth:'To Jinjang + BSD', sendWa2:'WhatsApp (2nd no.)', delivery:d=>`For delivery tomorrow (${d})`, offTmr:(n,d)=>`${n} is off tomorrow (${d}) – no order today`,
+        order:'Order', orderTitle:'Supplier Order', jjHas:'Jinjang has', jjNotToday:'Jinjang not counted today', jjNotList:'not on the Jinjang count list', jjNoLv:'no Jinjang level yet', jjLvLink:'Jinjang levels', jjLvTitle:n=>`${n} – Jinjang levels`, jjLvNote:'Jinjang orders by itself from these levels and the Jinjang count.', lvOff:'Fill up to – day before the supplier is off', jjLbl:'Jinjang', bsdLbl:'BSD', toJJ:'To Jinjang', toBSD:'To BSD', toBoth:'To Jinjang + BSD', sendWa2:'WhatsApp (2nd no.)', delivery:d=>`For delivery tomorrow (${d})`, offTmr:(n,d)=>`${n} is off tomorrow (${d}) – no order today`,
         beforeOff:'Day before their off day – stock up to the higher par', onHand:'on hand', par:'par', notToday:d=>`⚠ not counted today${d?' (last '+d+')':''}`,
         countedToday:'counted today', underMin:(t,m)=>`⚠ Total ${t} – under minimum order ${m}, supplier may not deliver`,
         sendWa:'Send on WhatsApp', copy:'Copy message', copied:'Copied', orderedToday:'✓ Ordered today', markOrdered:'Mark as ordered', noWa:'No WhatsApp for this supplier – tell them the list above (in person / by phone), then tap Mark as ordered.', recorded:'Order recorded', noOrder:'Nothing to order', belowMinShort:(n,m)=>`only ${n} needed, under minimum ${m}`, idleTitle:'No order needed today', enough:'stock enough', nothingToday:'Nothing to order today ✓', tapOpen:'tap to order by hand', closeCard:'close', belowMin:(n,m)=>`No order today – only ${n} needed, under minimum ${m}`, noSup:'No supplier items set up yet' },
@@ -274,7 +274,7 @@ const TXT = {
         meAuto:'到了 MonthEndDates 里的日期会自动开始。', total:'总计', making:'正在生成 Excel…',
         download:'下载 Excel', openSheet:'用 Google Sheets 打开', started:'月底盘点已开始', closedMsg:'月底盘点已结束',
         sumTitle:'月底总结', sumText:(d,n)=>`已点 ${d}/${n} 行 · 价值 = 数量 × 单价`, closeConfirm:'结束月底盘点？员工会回到每日盘点。',
-        order:'订货', orderTitle:'供应商订货', jjLbl:'增江', bsdLbl:'BSD', toJJ:'送增江', toBSD:'送 BSD', toBoth:'送增江 + BSD', sendWa2:'WhatsApp（第二个号码）', delivery:d=>`明天送货（${d}）`, offTmr:(n,d)=>`${n} 明天休息（${d}）– 今天不用订`,
+        order:'订货', orderTitle:'供应商订货', jjHas:'增江现有', jjNotToday:'增江今天还没点', jjNotList:'不在增江盘点表', jjNoLv:'增江还没设定数量', jjLvLink:'增江设定', jjLvTitle:n=>`${n} – 增江设定数量`, jjLvNote:'增江的订货数量会按这些设定和增江的盘点自己算。', lvOff:'补到 – 供应商休息日的前一天', jjLbl:'增江', bsdLbl:'BSD', toJJ:'送增江', toBSD:'送 BSD', toBoth:'送增江 + BSD', sendWa2:'WhatsApp（第二个号码）', delivery:d=>`明天送货（${d}）`, offTmr:(n,d)=>`${n} 明天休息（${d}）– 今天不用订`,
         beforeOff:'明天之后是休息日 – 订到较高的库存量', onHand:'现有', par:'标准量', notToday:d=>`⚠ 今天还没点${d?'（上次 '+d+'）':''}`,
         countedToday:'今天已点', underMin:(t,m)=>`⚠ 总数 ${t} – 少于最低订量 ${m}，供应商可能不送`,
         sendWa:'用 WhatsApp 发送', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', markOrdered:'标记为已订', noWa:'这个供应商没有 WhatsApp – 当面或打电话告诉他上面的清单，然后点「标记为已订」。', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
@@ -384,7 +384,7 @@ let OPEN_ORD = {};
 function ordRefresh(){ const k = JSON.stringify(OPEN_ORD); OPEN_ORD = openOrd(); if (JSON.stringify(OPEN_ORD) === k || busy()) return;
   if ((MODE === 'daily' || MODE === 'jjc') && DATA && $('#body')) redraw(drawList); else if (MODE === 'stock' && SK) redraw(renderStock); }
 // ---------- Count list ----------
-const JJ_COUNT_ON = false;   // Jinjang daily count – switch on when the list / units / ordering are finished
+const JJ_COUNT_ON = true;    // Jinjang daily count – switch on when the list / units / ordering are finished
 let GROUP_SET = false, DSCOPE = 'bsd';   // Owner / View-only: 'bsd' = Daily tab, 'jj' = Jinjang tab
 const inScope = i => (DATA.user.role === 'Jinjang' || (DSCOPE === 'jj') === !!i.jj) && (JJ_COUNT_ON || !i.jj);
 function render(){
@@ -627,7 +627,7 @@ async function refreshOrders(){
   if (!OD) return;
   try { const d = await call('getOrders', PIN);
     if (MODE!=='order' || busy()) return;
-    const key = x => JSON.stringify(x.suppliers.map(s => [s.id, s.orderedToday, s.lines.map(l => [l.id, l.onHand, l.when, l.qty])]));
+    const key = x => JSON.stringify(x.suppliers.map(s => [s.id, s.orderedToday, s.lines.map(l => [l.id, l.onHand, l.when, l.qty, l.jjOnHand, l.jjWhen, l.jj, l.jjLv])]));
     if (key(d) === key(OD)) return;
     const op = {}; OD.suppliers.forEach(s => { if (s.open) op[s.id] = 1; }); d.suppliers.forEach(s => { if (op[s.id]) s.open = true; });
     OD = remember('order', d); redraw(renderOrders);
@@ -825,7 +825,7 @@ function orderMsg(s){
   }
   const zu = u => (UNIT_ZH[String(u || '').toLowerCase()] || String(u || '').toLowerCase());
   const rows = s.lines.map(l => { const j = Number(l.jj) || 0, b = Number(l.qty) || 0, u = zu(l.uom);
-    const p = [j > 0 ? `Jinjang ${j}${u}` : '', b > 0 ? `BSD ${b}${u}` : ''].filter(Boolean).join(' / ');
+    const p = [j > 0 ? `Jinjang ${j}${zu(l.jjUom || l.uom)}` : '', b > 0 ? `BSD ${b}${u}` : ''].filter(Boolean).join(' / ');
     return p ? `${l.word} ${p}` : ''; }).filter(Boolean);
   return [(s.prefix || '').replace(/[：:]?$/, '：'), ...rows, s.suffix].filter(Boolean).join('\n');
 }
@@ -842,7 +842,7 @@ function renderOrders(){
 function drawOrders(){
   if (!OD.suppliers.length) { $('#body').innerHTML = `<div class="empty">${T('noSup')}</div>`; return; }
   // A supplier gets a card only if there is something to order today (or it was already ordered / opened by hand).
-  OD.suppliers.forEach(s => { if (s.active === undefined) s.active = !s.offTomorrow && s.lines.some(l => Number(l.qty) > 0 || l.deliv === 'JJ' || l.deliv === 'BOTH'); });   // Jinjang-delivered suppliers always show (Owner types Jinjang's amount)
+  OD.suppliers.forEach(s => { if (s.active === undefined) s.active = !s.offTomorrow && supTotal(s) > 0; });   // a supplier shows only when something needs ordering (BSD count or Jinjang count)
   const cards = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? card(s, si) : '').join('');
   const idle = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? '' :
     `<div class="it" onclick="openSup(${si})"><b>${esc(s.name)}</b> – ${esc(s.offTomorrow ? T('offTmr', s.name, OD.tomorrow.label) : s.belowMin ? T('belowMinShort', s.need, s.minOrder) : T('enough'))} <span class="sub">· ${T('tapOpen')}</span></div>`).join('');
@@ -863,10 +863,14 @@ function card(s, si){
     const rows = s.lines.map((l, li) => { const u = uBoth(l.uom), bsdInfo = l.onHand === '' && !l.daily ? '' : `BSD ${T('onHand')}: <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(u)}`
           + (l.deliv !== 'JJ' && ruleTxt(l, u) ? ' · ' + esc(ruleTxt(l, u)) : l.deliv === 'BSD' && l.target ? ` · ${T('par')} ${esc(l.target)}` : '')
           + (l.onHand === '' ? '' : ' · ' + (l.countedToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${esc(T('notToday', l.when ? l.when.slice(8,10)+'/'+l.when.slice(5,7) : ''))}</span>`));
+        const ju = uBoth(l.jjUom || l.uom), jlv = { lv: l.jjLv || {} }, jjInfo = l.deliv === 'BSD' ? '' : !l.jjIn ? `<span style="color:var(--red)">${T('jjNotList')}</span>`
+          : `${T('jjHas')}: <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}` + (ruleTxt(jlv, ju) ? ' · ' + esc(ruleTxt(jlv, ju)) : ` · <span style="color:var(--red)">${T('jjNoLv')}</span>`)
+            + ' · ' + (l.jjToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${T('jjNotToday')}</span>`)
+            + (isBoss() ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
         const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl'), f === 'jj' ? l.jj : l.qty, '–');
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
-          <div class="meta">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${bsdInfo ? ' · ' + bsdInfo : ''}</div></div>
+          <div class="meta">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${jjInfo ? '<br>' + jjInfo : ''}${bsdInfo ? '<br>' + bsdInfo : ''}</div></div>
         <div class="qins">${l.deliv !== 'BSD' ? box('jj') : ''}${l.deliv !== 'JJ' ? box('qty') : ''}</div></div>`; }).join('');
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
     const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
@@ -877,6 +881,22 @@ function card(s, si){
       ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a>${s.wa2 ? `<a class="btn wa ${dis?'dis':''}" href="${dis?'#':waLink(s, 2)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa2')}</a>` : ''}`
              : `<button class="btn save" onclick="recordOrder(${si})" ${(s.offTomorrow || total === 0 || (s.minOrder && total < s.minOrder)) ? 'disabled' : ''}>${T('markOrdered')}</button>`}</div>
       ${s.wa ? '' : `<div class="cmeta">${T('noWa')}</div>`}</div>`;
+}
+// Owner: Jinjang levels (JJCount) for one item – same rule as BSD levels, plus "fill up to" before the supplier's off day
+function openJJLv(si, li){
+  const l = OD.suppliers[si].lines[li], L = l.jjLv || {}, u = esc(uName(String(l.jjUom || l.uom || '').toLowerCase()));
+  const f = (k, lab) => `<label class="lv">${lab}<span><input id="jl_${k}" class="qty sm" inputmode="decimal" value="${esc(nz(L[k]) ? L[k] : '')}"> ${u}</span></label>`;
+  $('#sTitle').textContent = T('jjLvTitle', itemName(l)); $('#sText').textContent = T('jjLvNote');
+  $('#sList').innerHTML = `${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}${f('off', T('lvOff'))}`;
+  $('#sBtns').innerHTML = `<button class="btn save" onclick="saveJJLv(${si},${li})">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
+  $('#sum').classList.add('show');
+}
+async function saveJJLv(si, li){
+  const l = OD.suppliers[si].lines[li], L = {}; ['min','rq','par','off'].forEach(k => L[k] = $('#jl_' + k).value.trim());
+  if (Object.values(L).find(v => v !== '' && isNaN(Number(v)))) { toast(T('numbers')); return; }
+  try { l.jjLv = await call('jjLevels', PIN, l.id, L); closeSum(); toast(T('lvSaved'));
+    OD = remember('order', await call('getOrders', PIN)); redraw(renderOrders); }
+  catch(e){ toast(String(e.message||e)); }
 }
 function copyMsg(si){
   const t = orderMsg(OD.suppliers[si]);
@@ -1305,7 +1325,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v89';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v90';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
