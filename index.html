@@ -343,7 +343,7 @@ function ordDay(t){ const m = String(t || '').match(/^(\d{1,2})\/(\d{1,2})/); if
 function openOrd(){
   const d = DV || recall('deliv'), m = {}; if (!d || !d.list) return m;
   const now = new Date(), old = o => { const x = ordDay(o.createdAt).split('/'); const t = new Date(now.getFullYear(), Number(x[1]) - 1, Number(x[0])); if (t > now) t.setFullYear(t.getFullYear() - 1); return (now - t) / 86400000 > 7; };
-  d.list.forEach(o => { if (o.dir !== 'JB' || o.status === 'Cancelled') return;
+  d.list.forEach(o => { if (o.dir !== 'JB' || o.status === 'Cancelled' || o.status === 'Done') return;
     o.lines.forEach(l => { if (l.id in m) return;   // newest order wins (list is newest first)
       const req = Number(l.req) || 0, sent = Number(l.sent) || 0, day = ordDay(o.createdAt);
       if (o.status === 'Requested') { if (req > 0 || l.decide) m[l.id] = { kind: 'open', q: req, unit: l.unit, id: o.id, day }; return; }
@@ -910,26 +910,26 @@ function recordOrder(si){
 }
 
 // ================= Jinjang ⇄ BSD Deliveries =================
-Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+ Order from Jinjang', newSend:'+ Send / return to Jinjang', newReq:'+ Request from BSD', newJJSend:'🚚 + Send to BSD', jjSendT:'Send to BSD', submitJJSend:'Mark as sent to BSD', jjSendOpen:'BSD has an open order – open it under “To send” and add extra items there.',
+Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+ Request from Jinjang', selfNote:'Self order – noodle vendor', selfMade:id=>`Noodles → self order ${id}`, dSelf:'Noodle vendor → BSD (self order)', rqJB:'BSD request (Jinjang → BSD)', rqBJ:'Jinjang request (BSD → Jinjang)', sDone:'Made into DO', newSend:'+ Send / return to Jinjang', newReq:'+ Request from BSD', newJJSend:'🚚 + Send to BSD', jjSendT:'Send to BSD', submitJJSend:'Mark as sent to BSD', jjSendOpen:'BSD has an open order – open it under “To send” and add extra items there.',
   dJB:'Jinjang → BSD', dBJ:'BSD → Jinjang', sRequested:'Waiting to send', sSent:'On the way', sReceived:'Received', sCancelled:'Cancelled',
   toSend:'To send', toRecv:'To receive', waiting:'Waiting for the other side', done:'Done (last 14 days)', nothing:'Nothing here yet',
   items:n=>`${n} item${n===1?'':'s'}`, by:'by', back:'‹ Back', addItem:'+ Add item', pickTitle:'Add item', note:'Note (optional)',
-  req:'asked', sentQ:'sent', recvQ:'received', submitOrder:'Send order to Jinjang', submitReq:'Send request to BSD', submitSend:'Mark as sent',
+  req:'asked', sentQ:'sent', recvQ:'received', submitOrder:'Send request to Jinjang', submitReq:'Send request to BSD', submitSend:'Mark as sent',
   markSent:'Mark as sent', markRecv:'Confirm received', cancelDO:'Cancel this order', cancelled:'Cancelled', sentOk:'Marked as sent ✓', recvOk:'Received ✓', createdOk:id=>`${id} created ✓`,
   checkQty:'Type what is actually sent – and the total kg for weighed items', checkRecv:'Check what arrived – lower the number / kg if damaged or short',
-  newOrderT:'Order from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
+  newOrderT:'Request from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
-  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', noodleFri:'Friday – noodle supplier comes to BSD, no Jinjang order', meFill:'from month-end count', noteBtn:'Note', noteOld:'Grey = not counted today (last count shown)', meEst:'≈ from month-end kg', pushT:'Notifications', pushOnL:'On', pushOffL:'Off', pushTestL:'Send a test notification', pushSent:'Test sent ✓ – it should pop up in a few seconds', pushOnOk:'Notifications on ✓', pushOffOk:'Notifications off', pushDenied:'Notifications are blocked – allow them for this app in the phone settings', pushNo:'This phone / browser cannot get notifications', pushIos:'iPhone: tap Share → Add to Home Screen, open the app from the Home Screen, then turn on', pushFail:'Could not turn on –', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Ordered ✓ – waiting for the other side to send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
-Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江订货', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货', newJJSend:'🚚 + 送货去 BSD', jjSendT:'送货去 BSD', submitJJSend:'确认已发去 BSD', jjSendOpen:'BSD 有订单还没发 – 请在「要发货」里打开那张单，在那里加货品。',
+  stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', noodleFri:'Friday – goes in BSD self order (noodle vendor comes to BSD)', meFill:'from month-end count', noteBtn:'Note', noteOld:'Grey = not counted today (last count shown)', meEst:'≈ from month-end kg', pushT:'Notifications', pushOnL:'On', pushOffL:'Off', pushTestL:'Send a test notification', pushSent:'Test sent ✓ – it should pop up in a few seconds', pushOnOk:'Notifications on ✓', pushOffOk:'Notifications off', pushDenied:'Notifications are blocked – allow them for this app in the phone settings', pushNo:'This phone / browser cannot get notifications', pushIos:'iPhone: tap Share → Add to Home Screen, open the app from the Home Screen, then turn on', pushFail:'Could not turn on –', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Requested ✓ – waiting for the other side to make the DO and send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
+Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江要货', selfNote:'自订 – 面佬', selfMade:id=>`面 → 自订单 ${id}`, dSelf:'面佬 → BSD（自订）', rqJB:'BSD 要货单（增江 → BSD）', rqBJ:'增江要货单（BSD → 增江）', sDone:'已开单', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货', newJJSend:'🚚 + 送货去 BSD', jjSendT:'送货去 BSD', submitJJSend:'确认已发去 BSD', jjSendOpen:'BSD 有订单还没发 – 请在「要发货」里打开那张单，在那里加货品。',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
   items:n=>`${n} 项`, by:'由', back:'‹ 返回', addItem:'+ 加货品', pickTitle:'加货品', note:'备注（可不填）',
-  req:'要', sentQ:'发', recvQ:'收', submitOrder:'发订单给增江', submitReq:'发要货单给 BSD', submitSend:'确认已发出',
+  req:'要', sentQ:'发', recvQ:'收', submitOrder:'发要货单给增江', submitReq:'发要货单给 BSD', submitSend:'确认已发出',
   markSent:'确认已发出', markRecv:'确认已收到', cancelDO:'取消这张单', cancelled:'已取消', sentOk:'已发出 ✓', recvOk:'已收到 ✓', createdOk:id=>`${id} 已建立 ✓`,
   checkQty:'填实际发出的数量，称重的货品也要填总公斤', checkRecv:'核对收到的货 – 坏了 / 少了就把数量或公斤改小',
-  newOrderT:'向增江订货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
+  newOrderT:'向增江要货', newSendT:'送回 / 退货给增江', newReqT:'向 BSD 要货', addSome:'请至少加一项货品',
   statement:'对账单', thisMonth:'本月', lastMonth:'上月', stJB:'增江 → BSD', stBJ:'BSD → 增江（扣除）', stNet:'BSD 应付增江',
-  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', noodleFri:'星期五 – 面佬直接送 BSD，不用向增江订', meFill:'来自月底盘点', noteBtn:'笔记', noteOld:'灰色 = 今天还没点（显示上次的数量）', meEst:'≈ 按月底公斤换算', pushT:'通知', pushOnL:'已开', pushOffL:'已关', pushTestL:'发一个测试通知', pushSent:'已发送 ✓ – 几秒内会弹出', pushOnOk:'通知已开启 ✓', pushOffOk:'通知已关闭', pushDenied:'通知被阻止了 – 请在手机设置里允许这个 App 的通知', pushNo:'这部手机 / 浏览器不能接收通知', pushIos:'iPhone：先点「分享」→「添加到主屏幕」，从主屏幕打开 App，再开启', pushFail:'开启失败 –', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已下单 ✓ – 等对方发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
+  stNone:'本月还没有已收到的送货', working:'处理中…', sentAt:'发出', tellJJ:'用 WhatsApp 通知增江', tellBSD:'用 WhatsApp 通知 BSD', pickChat:'会打开 WhatsApp – 选增江 / BSD 的聊天或群组，然后发送。', skip:'跳过', minRule:(m,q,u)=>`剩 ${m} 或更少 → 订 ${q} ${u}`, jjDecide:'由增江决定数量', jjShort:'增江定', needQty:n=>`请填写 ${n} 的包/箱数`, notCounted:'还没点', need:'需要', weighed:'要称重，填总公斤', weighHint:'称重的货品：填几包/几箱，也要填总重量（公斤）', needKg:n=>`请填写 ${n} 的总重量（公斤）`, remove:'删除', blankHint:'空白 = 由增江决定数量 · 0 = 不需要', jjPh:'增江定', jjAsk:'已保存 ✓ 现在向增江订货吗？', jjGo:'向增江订货 →', later:'稍后', jjPrep:'正在读取今天的数量…', shortT:'货不够', shortTx:'', shortL:(a,b,u)=>`送 ${b} / 要 ${a} ${u}`, viewOnly:'只能查看', menuT:'更多', noodleFri:'星期五 – 放进 BSD 自订单（面佬直接送 BSD）', meFill:'来自月底盘点', noteBtn:'笔记', noteOld:'灰色 = 今天还没点（显示上次的数量）', meEst:'≈ 按月底公斤换算', pushT:'通知', pushOnL:'已开', pushOffL:'已关', pushTestL:'发一个测试通知', pushSent:'已发送 ✓ – 几秒内会弹出', pushOnOk:'通知已开启 ✓', pushOffOk:'通知已关闭', pushDenied:'通知被阻止了 – 请在手机设置里允许这个 App 的通知', pushNo:'这部手机 / 浏览器不能接收通知', pushIos:'iPhone：先点「分享」→「添加到主屏幕」，从主屏幕打开 App，再开启', pushFail:'开启失败 –', jjTab:'增江', jjCountT:'增江盘点', ordered:'已订', onWay:'在路上', jjNoStock:'增江没货', tkCnt:'今天点过', tkLow:'不够 – 还没订', tkRcv:'已收到', dlogT:'每日盘点记录', dlogNone:'这天没有保存的每日盘点。', refreshed:'已更新 ✓', backExit:'再按一次返回键关闭 App', usageT:'用量报告', lastNd:d=>`${d} 天`, uWd:'平均每天', uSat:'星期六', uTot:(t,u,n)=>`${n} 天共 ${t} ${u}`, uNone:'还没有用量 – 每日盘点和 −1 多了就会显示。', uHelp:'每日货品：昨天数量 + 收到 − 今天数量。库存货品：按 −1 计算。', uSince:d=>`每日记录从 ${d} 开始。`, ordAskT:'向增江订货？', ordAskNone:'库存都够 – 下一页也可以自己加货品。', ordGo:'继续 →', tapShow:'点开查看', tapHide:'点击收起', nothingNeed:'不需要订 – 库存足够 ✓ 要订别的请点「+ 加货品」。', shortYes:'先送，缺的后补', shortNo:'先送，不用补', saving:'保存中…', retrying:'⏳ 服务器忙 – 正在重试…', offlineWait:'⏳ 没有网络 – 有网络时会自动保存', sOrdered:'已要货 ✓ – 等对方开单发货', notSaved:'⚠ 没有保存成功 – 请再试一次。', idChanged:(a,b)=>`单号是 ${b}（不是 ${a}）` });
 
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
@@ -977,7 +977,7 @@ function renderDeliv(){
   const side = DV.side, L = DV.list;
   const sendL = L.filter(canSend), recvL = L.filter(canRecv);
   const waitL = L.filter(o => (o.status === 'Requested' || o.status === 'Sent') && !canSend(o) && !canRecv(o));
-  const doneL = L.filter(o => o.status === 'Received' || o.status === 'Cancelled');
+  const doneL = L.filter(o => o.status === 'Received' || o.status === 'Cancelled' || o.status === 'Done');
   const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['request', T('newReq')]].concat(sendL.length ? [] : [['jjsend', T('newJJSend')]]) : [['order', T('newOrder')], ['send', T('newSend')]])
     .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('') + (side === 'JJ' && sendL.length ? `<div class="cmeta" style="padding:6px 2px 0;width:100%">${T('jjSendOpen')}</div>` : '');
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
@@ -992,7 +992,7 @@ const shownLine = o => l => o.status === 'Requested' || o.status === 'Cancelled'
 function doRow(o, hot){
   const n = o.lines.filter(shownLine(o)).length, t = o.status === 'Received' ? o.receivedAt : o.status === 'Sent' ? o.sentAt : o.createdAt;
   return `<div class="row drow" onclick="openDO('${esc(o.id)}')"><div class="info">
-    <div class="name" style="color:${hot?'var(--brand)':'var(--ink)'}">${esc(o.id)} · ${T('d'+o.dir)}</div>
+    <div class="name" style="color:${hot?'var(--brand)':'var(--ink)'}">${esc(o.id)} · ${T(o.self ? 'dSelf' : String(o.id).indexOf('RQ-') === 0 ? 'rq' + o.dir : 'd'+o.dir)}</div>
     <div class="meta">${stName(o.status, o)} · ${esc(t)} · ${T('items', n)} · ${T('by')} ${esc(areaName(o.createdBy))}${o.note?' · '+esc(o.note):''}</div></div><span class="sub">›</span></div>`;
 }
 // ---------- Quantity inputs: weighed items get a second box for the total kg ----------
@@ -1005,7 +1005,7 @@ const bad = v => v !== '' && v !== undefined && isNaN(Number(v));
 function newDO(mode, auto){
   DVIEW = { kind:'new', mode, auto: !!auto }; DNOTE = '';
   DLINES = mode === 'order' && auto ? DV.items.filter(i => i.dj || ((i.stock || i.jj) && (i.stock || nz(i.min) || nz(i.smin) || nz(i.par)) && needOf(i) > 0))   /* only items Jinjang supplies (TransferItems / Stock tab) – not Soya, Sugar Cane etc. from other suppliers */.map(i => newLine(i, true, true)).filter(l => l.qty !== '0') : [];   /* nothing needed (0) → not shown */   // + Stock-tab items marked 'running low' (ReorderQty, else Jinjang decides)   // Jinjang items Kitchen counts daily + low items with a fixed reorder rule (Garlic, Cili Padi)
-  if (DVIEW.auto) { const oo = openOrd(); DLINES = DLINES.filter(l => !skipNoodle(l.info || {})).map(l => { const x = oo[l.id]; if (openQ(x) && l.qty !== '' && !isNaN(Number(l.qty))) l.qty = String(Math.max(0, Math.ceil(Number(l.qty) - openQ(x)))); return l; }).filter(l => l.qty !== '0'); }   // already ordered → not again
+  if (DVIEW.auto) { const oo = openOrd(); DLINES = DLINES.map(l => { const x = oo[l.id]; if (openQ(x) && l.qty !== '' && !isNaN(Number(l.qty))) l.qty = String(Math.max(0, Math.ceil(Number(l.qty) - openQ(x)))); return l; }).filter(l => l.qty !== '0'); }   // already ordered → not again
   renderDeliv(); window.scrollTo(0, 0);
 }
 // Stock line for ordering: on hand, par and what is missing. Same unit as ordered → quantity filled in for you.
@@ -1060,16 +1060,25 @@ async function submitNew(){
   if (!send.length) { toast(T('addSome')); return; }
   if (DVIEW.mode === 'send' || DVIEW.mode === 'jjsend') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
   // shows at once (number guessed = next number); the server saves in the background
-  const mode = DVIEW.mode, note = DNOTE.trim(), keep = DLINES, id = nextLocalId(), now = hhmm(), u = curUser(), sent = mode === 'send' || mode === 'jjsend';
-  const o = { id, dir: mode === 'order' || mode === 'jjsend' ? 'JB' : 'BJ', status: sent ? 'Sent' : 'Requested', note, createdBy: u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area),
-    createdAt: now, sentAt: sent ? now : '', receivedAt: '', pending: true,
-    lines: send.map((x, k) => { const L = DLINES.find(l => l.id === x.id) || {};
-      return { line: id + '-' + (k + 1), id: x.id, name: L.name, zh: L.zh, unit: L.unit, wt: L.wt, req: sent || x.decide ? '' : x.qty, sent: sent ? x.qty : '', recv: '', added: false,
-        sentKg: sent && L.wt ? x.kg : '', recvKg: '', decide: !!x.decide }; }) };
-  DV.list.unshift(o); remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T('createdOk', id));
-  offerNotice(id, mode === 'request' || mode === 'jjsend' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : mode === 'jjsend' ? 'sent' : 'back');
-  bgAct('createDelivery', [mode, send, note], { lid: id, view: [o] },
-    e => { DV.list = DV.list.filter(x => x !== o); remember('deliv', DV); closeSum(); DLINES = keep; DNOTE = note; DVIEW = { kind:'new', mode }; if (MODE === 'deliv') renderNew(); toast(T('notSaved') + ' ' + String(e.message||e)); });
+  const mode = DVIEW.mode, note = DNOTE.trim(), keep = DLINES, u = curUser();
+  // Noodle day (Friday): noodles in BSD's request become BSD's own self order (vendor drops at BSD, Jinjang pays) – Jinjang does not see it
+  const isNd = x => { const i = DV.items.find(y => y.id === x.id); return mode === 'order' && noNoodleDay() && i && (i.sg === 'Noodle' || i.grp === 'Noodle'); };
+  const selfL = send.filter(x => isNd(x) && Number(x.qty) > 0), restL = send.filter(x => !(isNd(x) && Number(x.qty) > 0));
+  const mk = (md, lines) => {
+    const sent = md === 'send' || md === 'jjsend' || md === 'self', id = nextLocalId(md === 'order' || md === 'request' ? 'RQ' : 'DO'), now = hhmm();
+    const o = { id, dir: md === 'order' || md === 'jjsend' || md === 'self' ? 'JB' : 'BJ', status: sent ? 'Sent' : 'Requested', note: md === 'self' ? T('selfNote') + (note ? ' · ' + note : '') : note, self: md === 'self',
+      createdBy: u.role === 'Owner' ? 'Owner' : (u.role === 'Jinjang' ? 'Jinjang' : u.area), createdAt: now, sentAt: sent ? now : '', receivedAt: '', pending: true,
+      lines: lines.map((x, k) => { const L = DLINES.find(l => l.id === x.id) || {};
+        return { line: id + '-' + (k + 1), id: x.id, name: L.name, zh: L.zh, unit: L.unit, wt: L.wt, req: md === 'self' ? x.qty : sent || x.decide ? '' : x.qty, sent: sent ? x.qty : '', recv: '', added: false,
+          sentKg: sent && L.wt ? x.kg : '', recvKg: '', decide: !!x.decide }; }) };
+    DV.list.unshift(o); remember('deliv', DV);
+    bgAct('createDelivery', [md, lines, note], { lid: id, view: [o] },
+      e => { DV.list = DV.list.filter(x => x !== o); remember('deliv', DV); closeSum(); DLINES = keep; DNOTE = note; DVIEW = { kind:'new', mode }; if (MODE === 'deliv') renderNew(); toast(T('notSaved') + ' ' + String(e.message||e)); });
+    return o;
+  };
+  const so = selfL.length ? mk('self', selfL) : null, ro = restL.length ? mk(mode, restL) : null;
+  DVIEW = null; renderDeliv(); toast([ro ? T('createdOk', ro.id) : '', so ? T('selfMade', so.id) : ''].filter(Boolean).join(' · '));
+  if (ro) offerNotice(ro.id, mode === 'request' || mode === 'jjsend' ? 'BSD' : 'JJ', mode === 'order' ? 'new' : mode === 'request' ? 'req' : mode === 'jjsend' ? 'sent' : 'back');
 }
 // ---------- Background saving: actions show at once, the server catches up (one at a time, in order) ----------
 // The waiting list (outbox) is kept on the phone, so it still gets saved after switching pages, leaving the app
@@ -1095,7 +1104,7 @@ function overlay(d){
     if (i >= 0) d.list[i] = c; else d.list.unshift(c); }));
   return d;
 }
-function nextLocalId(){ let n = 0; DV.list.forEach(o => { const m = String(o.id).match(/(\d+)$/); if (m) n = Math.max(n, Number(m[1])); }); return 'DO-' + String(n + 1).padStart(4, '0'); }
+function nextLocalId(p){ p = p || 'DO'; let n = 0; DV.list.forEach(o => { if (String(o.id).indexOf(p + '-') !== 0) return; const m = String(o.id).match(/(\d+)$/); if (m) n = Math.max(n, Number(m[1])); }); return p + '-' + String(n + 1).padStart(4, '0'); }
 // meta: ids = argument positions holding a DO number (swapped for the real one when sent) · lid / flid = guessed new / follow-up number
 function bgAct(fn, args, meta, undo){
   const key = Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
@@ -1141,6 +1150,7 @@ async function runOutbox(){
       oboxSet(obox().filter(x => x.key !== job.key)); delete HANDLERS[job.key];
       if (job.lid && typeof r === 'string' && r !== job.lid) { swapId(job.lid, r); toast(T('idChanged', job.lid, r)); }
       if (job.flid && r && r.follow && r.follow !== job.flid) swapId(job.flid, r.follow);
+      if (job.rq && r && r.id && r.id !== job.rq) swapId(job.rq, r.id);   // request sent → the real DO number
       if (!obox().length && res && res.deliv && res.deliv.items && job.pin === PIN) {   // all saved → take the server's list
         DV = remember('deliv', res.deliv);
         if (MODE === 'deliv' && !busy() && (!DVIEW || doClean())) redraw(DVIEW ? renderDO : renderDeliv);
@@ -1199,7 +1209,7 @@ function renderDO(){
   const total = own && o.status === 'Received' ? o.lines.reduce((a, l) => a + (Number(l.amount)||0), 0) : null;
   const info = [stName(o.status, o), `${T('by')} ${esc(areaName(o.createdBy))} ${esc(o.createdAt)}`, o.sentAt ? `${T('sentAt')} ${esc(o.sentAt)}` : '', o.receivedAt ? `${T('sReceived')} ${esc(o.receivedAt)}` : ''].filter(Boolean).join(' · ');
   const act = send ? `<button class="btn save" id="dsub" onclick="doSend()">${T('markSent')}</button>` : recv ? `<button class="btn save" id="dsub" onclick="doRecv()">${T('markRecv')}</button>` : '';
-  $('#app').innerHTML = dHeader(`${esc(o.id)} · ${T('d'+o.dir)}`) +
+  $('#app').innerHTML = dHeader(`${esc(o.id)} · ${T(o.self ? 'dSelf' : String(o.id).indexOf('RQ-') === 0 ? 'rq' + o.dir : 'd'+o.dir)}`) +
     `<div class="dbtns"><button class="btn ghost" onclick="DVIEW=null;renderDeliv()">${T('back')}</button>${send ? `<button class="btn ghost" onclick="openPick()">${T('addItem')}</button>` : ''}${canCancel(o) ? `<button class="btn ghost" style="color:var(--red)" onclick="doCancel()">${T('cancelDO')}</button>` : ''}</div>
     <div class="cmeta" style="padding:8px 14px 0">${info}${o.note ? '<br>'+esc(o.note) : ''}${send ? '<br><b>'+T('checkQty')+'</b>' : recv ? '<br><b>'+T('checkRecv')+'</b>' : ''}</div>
     <div class="list" style="margin-top:10px">${rows}</div>
@@ -1248,7 +1258,7 @@ async function doAct(fn, recv, okMsg, later){
       DV.list.unshift(fo); FOLLOW[o.id] = fid; } }
   remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T(okMsg));
   if (!recv) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'sent');
-  bgAct(fn, [o.id, lines, !!later], { ids: [0], flid: fo ? fo.id : '', view: fo ? [o, fo] : [o] },
+  bgAct(fn, [o.id, lines, !!later], { ids: [0], flid: fo ? fo.id : '', rq: String(o.id).indexOf('RQ-') === 0 && !recv ? o.id : '', view: fo ? [o, fo] : [o] },
     e => { const i = DV.list.indexOf(o); if (i >= 0) DV.list[i] = JSON.parse(snap); if (fo) DV.list = DV.list.filter(x => x !== fo); remember('deliv', DV);
       if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
@@ -1325,7 +1335,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v91';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v92';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1475,13 +1485,13 @@ async function refreshStock(){
 function setSGrp(g){ SGRP = g; try { localStorage.setItem('xym_sgrp', g); } catch(e){} renderStock(); window.scrollTo(0, 0); }
 function renderStock(){ OPEN_ORD = openOrd();
   const u = curUser(), who = whoKey(u), boss = isBoss();
-  const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0 && !skipNoodle(i)).length;
+  const items = SK.items.filter(i => pageOf(i) === SGRP).sort((a, b) => (grpOf(a) === 'Bought') - (grpOf(b) === 'Bought')), nAll = SK.items.filter(i => stockNeed(i) > 0).length;
   const two = SGRP === 'Jinjang';
   const rows = items.map((i, k) => (two && (k === 0 || grpOf(items[k-1]) !== grpOf(i)) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '') + (() => {
     const old = i.qty === '', unit = esc(uName(i.unit)), nd = stockNeed(i);   // any change of the number (count, −1, received) = updated
     const meta = [i.qty === '' ? `<span style="color:var(--red)">${T('neverChecked')}</span>` : `${T('left')} <b>${esc(i.qty)}</b> ${unit}`,
       i.at ? `${T('updated')} ${esc(i.at)}` : '',
-      nd > 0 && !openQ(OPEN_ORD[i.id]) ? (skipNoodle(i) ? `<b style="color:var(--brand)">${T('noodleFri')}</b>` : `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>`) : '',
+      nd > 0 && !openQ(OPEN_ORD[i.id]) ? (skipNoodle(i) ? `<b style="color:var(--brand)">${T('needN', nd, uName(i.unit))} · ${T('noodleFri')}</b>` : `<b style="color:var(--red)">${T('needN', nd, uName(i.unit))}</b>`) : '',
       boss ? `<a href="#" onclick="openLevels('${esc(i.id)}');return false">${T('setLv')}</a>` : ''].filter(Boolean).join(' · ');
     if (isViewer()) return vRow(itemName(i), i.qty, i.unit, old, itemSub(i));   // View-only: same big list as Daily
     const v = i.id in SEDITS ? SEDITS[i.id] : '';
@@ -1671,7 +1681,7 @@ function renderUsage(){
 // Order button → confirmation first (what is low), then on to Order from Jinjang
 function askStockOrder(){
   const eff = i => (i.id in SEDITS && SEDITS[i.id] !== '' && !isNaN(Number(SEDITS[i.id]))) ? Object.assign({}, i, { qty: Number(SEDITS[i.id]) }) : i;
-  const oo = openOrd(), ord = ['Jinjang', 'Bought', 'Noodle'], list = SK.items.map(eff).filter(i => !skipNoodle(i) && stockNeed(i) - openQ(oo[i.id]) > 0).sort((a, b) => ord.indexOf(grpOf(a)) - ord.indexOf(grpOf(b)));
+  const oo = openOrd(), ord = ['Jinjang', 'Bought', 'Noodle'], list = SK.items.map(eff).filter(i => stockNeed(i) - openQ(oo[i.id]) > 0).sort((a, b) => ord.indexOf(grpOf(a)) - ord.indexOf(grpOf(b)));
   $('#sTitle').textContent = T('ordAskT'); $('#sText').textContent = '';
   $('#sList').innerHTML = list.map((i, k) => (k === 0 || grpOf(list[k-1]) !== grpOf(i) ? `<div class="lgh">${T('g' + grpOf(i))}</div>` : '')
       + `<div class="srow"><span>${lineName(i)}</span><b>${esc(Math.ceil(stockNeed(i) - openQ(oo[i.id])))} ${esc(uName(i.unit))}</b></div>`).join('') || `<div class="empty">${T('ordAskNone')}</div>`;
