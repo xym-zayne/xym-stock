@@ -910,7 +910,7 @@ function recordOrder(si){
 }
 
 // ================= Jinjang ⇄ BSD Deliveries =================
-Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+ Request from Jinjang', selfNote:'Self order – noodle vendor', selfMade:id=>`Noodles → self order ${id}`, dSelf:'Noodle vendor → BSD (self order)', rqJB:'BSD request (Jinjang → BSD)', rqBJ:'Jinjang request (BSD → Jinjang)', sDone:'Made into DO', newSend:'+ Send / return to Jinjang', newReq:'+ Request from BSD', newJJSend:'🚚 + Send to BSD', jjSendT:'Send to BSD', submitJJSend:'Mark as sent to BSD', jjSendOpen:'BSD has an open order – open it under “To send” and add extra items there.',
+Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+ Request from Jinjang', editDO:'✏️ Edit', saveEdit:'Save changes', editHint:'Change what was sent, add missed items (+ Add item), or set 0 to take an item out. Only until it is received.', editOk:id=>`${id} updated ✓`, selfNote:'Self order – noodle vendor', selfMade:id=>`Noodles → self order ${id}`, dSelf:'Noodle vendor → BSD (self order)', rqJB:'BSD request (Jinjang → BSD)', rqBJ:'Jinjang request (BSD → Jinjang)', sDone:'Made into DO', newSend:'+ Send / return to Jinjang', newReq:'+ Request from BSD', newJJSend:'🚚 + Send to BSD', jjSendT:'Send to BSD', submitJJSend:'Mark as sent to BSD', jjSendOpen:'BSD has an open order – open it under “To send” and add extra items there.',
   dJB:'Jinjang → BSD', dBJ:'BSD → Jinjang', sRequested:'Waiting to send', sSent:'On the way', sReceived:'Received', sCancelled:'Cancelled',
   toSend:'To send', toRecv:'To receive', waiting:'Waiting for the other side', done:'Done (last 14 days)', nothing:'Nothing here yet',
   items:n=>`${n} item${n===1?'':'s'}`, by:'by', back:'‹ Back', addItem:'+ Add item', pickTitle:'Add item', note:'Note (optional)',
@@ -920,7 +920,7 @@ Object.assign(TXT.en, { deliv:'Deliveries', delivTitle:'Deliveries', newOrder:'+
   newOrderT:'Request from Jinjang', newSendT:'Send / return to Jinjang', newReqT:'Request from BSD', addSome:'Add at least one item',
   statement:'Statement', thisMonth:'This month', lastMonth:'Last month', stJB:'Jinjang → BSD', stBJ:'BSD → Jinjang (credit)', stNet:'BSD pays Jinjang',
   stNone:'No received deliveries this month', working:'Working…', sentAt:'Sent', tellJJ:'Tell Jinjang on WhatsApp', tellBSD:'Tell BSD on WhatsApp', pickChat:'WhatsApp opens – pick the Jinjang / BSD chat or group, then Send.', skip:'Skip', minRule:(m,q,u)=>`${m} or less → order ${q} ${u}`, jjDecide:'Jinjang decides how much', jjShort:'Jinjang', needQty:n=>`Type how many bags/boxes for ${n}`, notCounted:'not counted', need:'need', weighed:'weigh & type total kg', weighHint:'Weighed items: type how many bags/boxes AND the total kg', needKg:n=>`Type the total kg for ${n}`, remove:'remove', blankHint:'Blank = Jinjang decides how much · 0 = not needed', jjPh:'Jinjang', jjAsk:'Count saved ✓ Order from Jinjang now?', jjGo:'Order from Jinjang →', later:'Later', jjPrep:'Getting today\'s count…', shortT:'Not enough stock', shortTx:'', shortL:(a,b,u)=>`${b} / ${a} ${u}`, viewOnly:'View only', menuT:'More', noodleFri:'Friday – goes in BSD self order (noodle vendor comes to BSD)', meFill:'from month-end count', noteBtn:'Note', noteOld:'Grey = not counted today (last count shown)', meEst:'≈ from month-end kg', pushT:'Notifications', pushOnL:'On', pushOffL:'Off', pushTestL:'Send a test notification', pushSent:'Test sent ✓ – it should pop up in a few seconds', pushOnOk:'Notifications on ✓', pushOffOk:'Notifications off', pushDenied:'Notifications are blocked – allow them for this app in the phone settings', pushNo:'This phone / browser cannot get notifications', pushIos:'iPhone: tap Share → Add to Home Screen, open the app from the Home Screen, then turn on', pushFail:'Could not turn on –', jjTab:'Jinjang', jjCountT:'Jinjang count', ordered:'Ordered', onWay:'On the way', jjNoStock:'Jinjang no stock', tkCnt:'Counted today', tkLow:'Low – not ordered', tkRcv:'Received', dlogT:'Daily count records', dlogNone:'No daily counts saved for this day.', refreshed:'Updated ✓', backExit:'Press Back again to close the app', usageT:'Usage report', lastNd:d=>`${d} days`, uWd:'Avg per day', uSat:'Saturday', uTot:(t,u,n)=>`total ${t} ${u} in ${n} day${n===1?'':'s'}`, uNone:'No usage yet – it fills up as daily counts and −1 taps come in.', uHelp:'Daily items: yesterday\'s count + received − today\'s count. Stock items: −1 taps.', uSince:d=>`Daily history starts ${d}.`, ordAskT:'Order from Jinjang?', ordAskNone:'Nothing low – you can still add items on the next page.', ordGo:'Continue →', tapShow:'tap to show', tapHide:'tap to hide', nothingNeed:'Nothing needed – stock is enough ✓ Tap + Add item to order something.', shortYes:'Send – rest later', shortNo:'Send – no need', saving:'saving…', retrying:'⏳ Server busy – trying again…', offlineWait:'⏳ No signal – will save when back online', sOrdered:'Requested ✓ – waiting for the other side to make the DO and send', notSaved:'⚠ Not saved – please try again.', idChanged:(a,b)=>`Order number is ${b} (not ${a})` });
-Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江要货', selfNote:'自订 – 面佬', selfMade:id=>`面 → 自订单 ${id}`, dSelf:'面佬 → BSD（自订）', rqJB:'BSD 要货单（增江 → BSD）', rqBJ:'增江要货单（BSD → 增江）', sDone:'已开单', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货', newJJSend:'🚚 + 送货去 BSD', jjSendT:'送货去 BSD', submitJJSend:'确认已发去 BSD', jjSendOpen:'BSD 有订单还没发 – 请在「要发货」里打开那张单，在那里加货品。',
+Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newOrder:'+ 向增江要货', editDO:'✏️ 修改', saveEdit:'保存修改', editHint:'改发出的数量、加漏掉的货（+ 加货品），或填 0 拿掉。对方收货前才可以改。', editOk:id=>`${id} 已修改 ✓`, selfNote:'自订 – 面佬', selfMade:id=>`面 → 自订单 ${id}`, dSelf:'面佬 → BSD（自订）', rqJB:'BSD 要货单（增江 → BSD）', rqBJ:'增江要货单（BSD → 增江）', sDone:'已开单', newSend:'+ 送回 / 退货给增江', newReq:'+ 向 BSD 要货', newJJSend:'🚚 + 送货去 BSD', jjSendT:'送货去 BSD', submitJJSend:'确认已发去 BSD', jjSendOpen:'BSD 有订单还没发 – 请在「要发货」里打开那张单，在那里加货品。',
   dJB:'增江 → BSD', dBJ:'BSD → 增江', sRequested:'等待发货', sSent:'已发出', sReceived:'已收到', sCancelled:'已取消',
   toSend:'要发货', toRecv:'要收货', waiting:'等对方处理', done:'已完成（14天内）', nothing:'暂时没有',
   items:n=>`${n} 项`, by:'由', back:'‹ 返回', addItem:'+ 加货品', pickTitle:'加货品', note:'备注（可不填）',
@@ -961,6 +961,7 @@ function senderOf(o){ return o.dir === 'JB' ? 'JJ' : 'BSD'; }
 function receiverOf(o){ return o.dir === 'JB' ? 'BSD' : 'JJ'; }
 function canSend(o){ return DV.side !== 'VIEW' && !o.pending && o.status === 'Requested' && (isOwnerD() || DV.side === senderOf(o)); }
 function canRecv(o){ return DV.side !== 'VIEW' && !o.pending && o.status === 'Sent' && (isOwnerD() || DV.side === receiverOf(o)); }
+function canEdit(o){ return DV.side !== 'VIEW' && !o.pending && o.status === 'Sent' && (isOwnerD() || DV.side === (o.self ? 'BSD' : senderOf(o))); }   // sender fixes a sent DO until it is received
 function canCancel(o){ return DV.side !== 'VIEW' && !o.pending && (o.status === 'Requested' && (isOwnerD() || DV.side === receiverOf(o))) || (o.status === 'Sent' && isOwnerD()); }
 function stName(s, o){ const own = o && s === 'Requested' && DV && DV.side !== 'OWNER' && !canSend(o) && !o.pending;
   return (own ? T('sOrdered') : (T('s' + s) || s)) + (o && o.pending ? ' · ' + T('saving') : ''); }
@@ -978,8 +979,8 @@ function renderDeliv(){
   const sendL = L.filter(canSend), recvL = L.filter(canRecv);
   const waitL = L.filter(o => (o.status === 'Requested' || o.status === 'Sent') && !canSend(o) && !canRecv(o));
   const doneL = L.filter(o => o.status === 'Received' || o.status === 'Cancelled' || o.status === 'Done');
-  const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['request', T('newReq')]].concat(sendL.length ? [] : [['jjsend', T('newJJSend')]]) : [['order', T('newOrder')], ['send', T('newSend')]])
-    .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('') + (side === 'JJ' && sendL.length ? `<div class="cmeta" style="padding:6px 2px 0;width:100%">${T('jjSendOpen')}</div>` : '');
+  const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['request', T('newReq')], ['jjsend', T('newJJSend')]] : [['order', T('newOrder')], ['send', T('newSend')]])
+    .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('');
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
   const done = doneL.length ? `<div class="group" style="cursor:pointer" onclick="DONE_OPEN=!DONE_OPEN;redraw(renderDeliv)">${DONE_OPEN ? '▾' : '▸'} ${T('done')} · ${doneL.length} <span class="sub">${T(DONE_OPEN ? 'tapHide' : 'tapShow')}</span></div>`
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
@@ -1114,7 +1115,7 @@ function bgAct(fn, args, meta, undo){
   if (undo) HANDLERS[key] = undo;
   runOutbox();
 }
-const REFUSE = /not allowed|owner only|view only|只能查看|not sent yet|item list changed|nothing typed|没有填数量|type the total|请填写|only the owner|not found|cannot cancel|wrong pin|no access|nothing to send/i;   // real "no" answers
+const REFUSE = /not allowed|owner only|view only|只能查看|not sent yet|cannot change|nothing left|item list changed|nothing typed|没有填数量|type the total|请填写|only the owner|not found|cannot cancel|wrong pin|no access|nothing to send/i;   // real "no" answers
 function netErr(e){ if (e && e.server) return false;   // the server answered "no" → do not retry
   return !e || e.net || /network|fetch|load failed|http 0|timed? ?out|connection|abort|cancell?ed|offline|internet/i.test(String(e.message || e)); }
 function callKeep(fn, ...args){   // like call(), but the request keeps going if the page is closed, and never thrown away on account switch
@@ -1185,16 +1186,16 @@ function pickItem(id){
 function openDO(id){ DVIEW = { kind:'do', id, extra:[], q:{}, k:{} }; renderDeliv(); window.scrollTo(0, 0); }
 function renderDO(){
   const o = DV.list.find(x => x.id === DVIEW.id); if (!o) { DVIEW = null; return renderDeliv(); }
-  const send = canSend(o), recv = canRecv(o), own = isOwnerD() || DV.side === 'VIEW';
-  const rows = o.lines.filter(shownLine(o)).map(l => {   /* sent 0 → not shown any more */
-    const base = send ? l.req : recv ? l.sent : '', baseKg = recv ? l.sentKg : '';
+  const edit = !!DVIEW.edit && canEdit(o), send = !edit && canSend(o), recv = !edit && canRecv(o), own = isOwnerD() || DV.side === 'VIEW';
+  const rows = o.lines.filter(edit ? () => true : shownLine(o)).map(l => {   /* sent 0 → not shown any more (except when editing) */
+    const base = send ? l.req : (recv || edit) ? l.sent : '', baseKg = (recv || edit) ? l.sentKg : '';
     const v = l.line in DVIEW.q ? DVIEW.q[l.line] : base, vk = l.line in DVIEW.k ? DVIEW.k[l.line] : baseKg;
     const st = send && o.dir === 'JB' ? DV.items.find(i => i.id === l.id) : null;
     const nums = [l.decide && l.req==='' ? `<b style="color:var(--brand)">${T('jjDecide')}</b>` : '',
       st ? `BSD ${T('onHand')} ${st.onHand === '' || st.onHand === undefined ? '–' : esc(st.onHand) + ' ' + esc(st.cu)}${st.at ? ' ('+esc(st.at)+')' : ''}` : '',
       l.req!==''?`${T('req')} ${fmtQ(l.req, l.unit)}`:'', l.sent!==''?`${T('sentQ')} ${fmtQ(l.sent, l.unit, l.sentKg)}`:'', l.recv!==''?`${T('recvQ')} ${fmtQ(l.recv, l.unit, l.recvKg)}`:''].filter(Boolean).join(' · ');
     const money = own && l.amount !== undefined && l.amount !== '' ? ` · RM ${Number(l.amount).toFixed(2)}` : (own && l.price !== '' && l.price !== undefined ? ` · @RM ${Number(l.price).toFixed(2)}/${l.wt?'kg':esc(l.unit)}` : '');
-    if (!send && !recv) {   /* nothing to do on this order: big final number on the right, weight only as small text */
+    if (!send && !recv && !edit) {   /* nothing to do on this order: big final number on the right, weight only as small text */
       const fq = l.recv !== '' && l.recv !== undefined ? l.recv : l.sent !== '' && l.sent !== undefined ? l.sent : l.req, fk = l.recv !== '' && l.recv !== undefined ? l.recvKg : l.sentKg;
       const sm = [fk !== '' && fk !== undefined && fk !== null ? esc(fk) + ' kg' : '', money.replace(/^ · /, '')].filter(Boolean).join(' · ');
       return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.added?' <span class="sub">+</span>':''}</div>${sm ? `<div class="meta">${sm}</div>` : ''}</div>
@@ -1202,16 +1203,16 @@ function renderDO(){
     }
     return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.added?' <span class="sub">+</span>':''}</div>
       <div class="meta">${nums || esc(l.unit)}${money}</div></div>
-      ${send || recv ? `<div class="qins">${qtyBox(`data-line="${esc(l.line)}" data-f="q"`, l.unit, v)}${l.wt ? kgBox(`data-line="${esc(l.line)}" data-f="k"`, vk) : ''}</div>` : ''}</div>`; }).join('') +
+      ${send || recv || edit ? `<div class="qins">${qtyBox(`data-line="${esc(l.line)}" data-f="q"`, l.unit, v)}${l.wt ? kgBox(`data-line="${esc(l.line)}" data-f="k"`, vk) : ''}</div>` : ''}</div>`; }).join('') +
     DVIEW.extra.map((l, k) => `<div class="row"><div class="info"><div class="name">${lineName(l)} <span class="sub">+</span></div>
       <div class="meta">${l.wt ? T('weighed') : esc(l.unit)} · <a href="#" onclick="DVIEW.extra.splice(${k},1);renderDO();return false">${T('remove')}</a></div></div>
       <div class="qins">${qtyBox(`data-k="${k}" data-f="qty"`, l.unit, l.qty)}${l.wt ? kgBox(`data-k="${k}" data-f="kg"`, l.kg) : ''}</div></div>`).join('');
   const total = own && o.status === 'Received' ? o.lines.reduce((a, l) => a + (Number(l.amount)||0), 0) : null;
   const info = [stName(o.status, o), `${T('by')} ${esc(areaName(o.createdBy))} ${esc(o.createdAt)}`, o.sentAt ? `${T('sentAt')} ${esc(o.sentAt)}` : '', o.receivedAt ? `${T('sReceived')} ${esc(o.receivedAt)}` : ''].filter(Boolean).join(' · ');
-  const act = send ? `<button class="btn save" id="dsub" onclick="doSend()">${T('markSent')}</button>` : recv ? `<button class="btn save" id="dsub" onclick="doRecv()">${T('markRecv')}</button>` : '';
+  const act = edit ? `<button class="btn save" id="dsub" onclick="doEdit()">${T('saveEdit')}</button>` : send ? `<button class="btn save" id="dsub" onclick="doSend()">${T('markSent')}</button>` : recv ? `<button class="btn save" id="dsub" onclick="doRecv()">${T('markRecv')}</button>` : '';
   $('#app').innerHTML = dHeader(`${esc(o.id)} · ${T(o.self ? 'dSelf' : String(o.id).indexOf('RQ-') === 0 ? 'rq' + o.dir : 'd'+o.dir)}`) +
-    `<div class="dbtns"><button class="btn ghost" onclick="DVIEW=null;renderDeliv()">${T('back')}</button>${send ? `<button class="btn ghost" onclick="openPick()">${T('addItem')}</button>` : ''}${canCancel(o) ? `<button class="btn ghost" style="color:var(--red)" onclick="doCancel()">${T('cancelDO')}</button>` : ''}</div>
-    <div class="cmeta" style="padding:8px 14px 0">${info}${o.note ? '<br>'+esc(o.note) : ''}${send ? '<br><b>'+T('checkQty')+'</b>' : recv ? '<br><b>'+T('checkRecv')+'</b>' : ''}</div>
+    `<div class="dbtns"><button class="btn ghost" onclick="DVIEW=null;renderDeliv()">${T('back')}</button>${send || edit ? `<button class="btn ghost" onclick="openPick()">${T('addItem')}</button>` : ''}${canEdit(o) && !edit ? `<button class="btn ghost" onclick="DVIEW.edit=true;DVIEW.q={};DVIEW.k={};DVIEW.extra=[];renderDO()">${T('editDO')}</button>` : ''}${canCancel(o) && !edit ? `<button class="btn ghost" style="color:var(--red)" onclick="doCancel()">${T('cancelDO')}</button>` : ''}</div>
+    <div class="cmeta" style="padding:8px 14px 0">${info}${o.note ? '<br>'+esc(o.note) : ''}${edit ? '<br><b>'+T('editHint')+'</b>' : send ? '<br><b>'+T('checkQty')+'</b>' : recv ? '<br><b>'+T('checkRecv')+'</b>' : ''}</div>
     <div class="list" style="margin-top:10px">${rows}</div>
     ${total !== null ? `<div class="srow tot" style="margin:10px 14px"><span>${T('total')}</span><b>RM ${total.toFixed(2)}</b></div>` : ''}
     <div class="spacer"></div>${act ? `<footer><div class="prog">${T('items', o.lines.filter(shownLine(o)).length + DVIEW.extra.length)}</div>${act}</footer>` : ''}`;
@@ -1263,6 +1264,17 @@ async function doAct(fn, recv, okMsg, later){
       if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
 }
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
+// Sender fixes a sent DO (missed item / wrong number) – same DO number, the other side is told again
+function doEdit(){
+  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, true); if (!lines) return;
+  const snap = JSON.stringify(o), now = hhmm(), extra = DVIEW.extra;
+  lines.forEach(x => { const l = x.line && o.lines.find(y => y.line === x.line); if (!l) return; l.sent = x.qty; if (l.wt) l.sentKg = x.kg; });
+  extra.forEach(x => o.lines.push({ line: o.id + '-' + (o.lines.length + 1), id: x.id, name: x.name, zh: x.zh, unit: x.unit, wt: x.wt, req: '', sent: Number(x.qty) || 0, recv: '', added: true, sentKg: x.wt ? x.kg : '', recvKg: '', decide: false }));
+  o.sentAt = now; o.pending = true; remember('deliv', DV); DVIEW = null; renderDeliv(); toast(T('editOk', o.id));
+  if (!o.self) offerNotice(o.id, o.dir === 'JB' ? 'BSD' : 'JJ', 'upd');
+  bgAct('editSent', [o.id, lines], { ids: [0], view: [o] },
+    e => { const i = DV.list.indexOf(o); if (i >= 0) DV.list[i] = JSON.parse(snap); remember('deliv', DV); if (MODE === 'deliv' && !DVIEW) renderDeliv(); toast(T('notSaved') + ' ' + String(e.message||e)); });
+}
 function doRecv(){ doAct('receiveDelivery', true, 'recvOk'); }
 // ---------- WhatsApp notice to the other side (language set per receiver in the Notify tab) ----------
 const UNIT_ZH = { jar:'瓶', sachet:'小包', box:'箱', bag:'包', pack:'包', kg:'公斤', tray:'托', carton:'箱', ctn:'箱', set:'包', pkt:'包', btl:'瓶', bottle:'瓶', 'bottle (750 ml)':'瓶', bundle:'捆', pot:'锅', tin:'罐', can:'罐', pcs:'个', roll:'卷', tong:'桶', cylinder:'桶' };
@@ -1271,15 +1283,15 @@ function noticeText(o, kind, lang){
     const many = new Set(ls.map(l => lineGrp(l.id))).size > 1; let last = '';
     return ls.map(l => {
     const nm = zh ? (l.zh || l.name) : l.name, u = zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit;
-    const q = kind === 'sent' || kind === 'back' ? l.sent : l.req, kg = (kind === 'sent' || kind === 'back') && l.sentKg !== '' ? (zh ? `（${l.sentKg}公斤）` : ` (${l.sentKg} kg)`) : '';
+    const sk = kind === 'sent' || kind === 'back' || kind === 'upd', q = sk ? l.sent : l.req, kg = sk && l.sentKg !== '' ? (zh ? `（${l.sentKg}公斤）` : ` (${l.sentKg} kg)`) : '';
     if (q === '' || q === undefined) return l.decide ? `${nm}${zh ? '（增江决定数量）' : ' (Jinjang decides)'}` : '';
-    if (kind === 'sent' && Number(q) === 0) return '';   // not sent → listed under "will send later" or simply left out
+    if ((kind === 'sent' || kind === 'upd') && Number(q) === 0) return '';   // not sent → listed under "will send later" or simply left out
     return `${nm} ${q}${zh ? '' : ' '}${u}${kg}`; }).map((x, k) => { if (!x) return '';
       const g = lineGrp(ls[k].id), h = many && g !== last ? `\n\n【${grpLabel(g, zh)}】` : ''; last = g; return h + '\n• ' + x; }).join(''); };   /* one item per line, under group headings */
-  const shortL = kind === 'sent' ? o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req)) : [];   // asked but not (fully) sent – just listed, no new order
+  const shortL = kind === 'sent' || kind === 'upd' ? o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req)) : [];   // asked but not (fully) sent – just listed, no new order
   const fl = (zh) => shortL.length ? (zh ? `\n\n❌ 没货：` : `\n\n❌ No stock:`) + shortL.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + Math.round((Number(l.req) - (Number(l.sent) || 0)) * 1000) / 1000 + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
-  const zh = `${{ new:'🛒 BSD 要货单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
-  const en = `${{ new:'🛒 BSD request', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please open it in the app, check the quantities and tap Mark as sent'}`;
+  const zh = `${{ new:'🛒 BSD 要货单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出', upd:'✏️ 已修改（请看新的清单）' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' || kind === 'upd' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
+  const en = `${{ new:'🛒 BSD request', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent', upd:'✏️ Updated (new list below)' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' || kind === 'upd' ? 'Please confirm received in the app' : 'Please open it in the app, check the quantities and tap Mark as sent'}`;
   return lang === 'en' ? en : lang === 'both' ? zh + '\n\n' + en : zh;
 }
 function afterNotice(){ closeSum(); if (MODE !== 'deliv') { MODE_SET = 'deliv'; MODE = 'deliv'; } DVIEW = null; renderDeliv(); window.scrollTo(0, 0); }   // done → the Deliveries list
@@ -1335,7 +1347,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v93';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v94';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
