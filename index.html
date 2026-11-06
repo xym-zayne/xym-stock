@@ -444,7 +444,7 @@ function drawList(){
   const items = DATA.items.filter(i => inScope(i) && (GROUP==='All' || DSCOPE==='jj' || i.group===GROUP) &&
     (!f || (i.name+' '+i.zh+' '+i.id+' '+i.hint+' '+i.hintZh).toLowerCase().includes(f)))
     .sort((a, b) => itemName(a).localeCompare(itemName(b), LANG==='zh' ? 'zh-Hans-CN-u-co-pinyin' : 'en', {sensitivity:'base'}));   /* A–Z (Chinese: by pinyin) */
-  const gk = i => i.jj ? (i.hint || 'Jinjang') : i.group;   // Jinjang list grouped by vendor
+  const gk = i => i.jj ? 'Jinjang' : i.group;   // Jinjang list = one list A–Z (not split by vendor)
   const by = {}; items.forEach(i => (by[gk(i)] = by[gk(i)] || []).push(i));
   const gord = g => DATA.items.findIndex(i => gk(i) === g);   // groups in sheet order (Jinjang: vendor order of the JJCount tab)
   $('#body').innerHTML = Object.keys(by).sort((a, b) => gord(a) - gord(b)).map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">` +
@@ -1325,7 +1325,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v90';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v91';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
