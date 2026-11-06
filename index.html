@@ -1278,8 +1278,8 @@ function noticeText(o, kind, lang){
       const g = lineGrp(ls[k].id), h = many && g !== last ? `\n\n【${grpLabel(g, zh)}】` : ''; last = g; return h + '\n• ' + x; }).join(''); };   /* one item per line, under group headings */
   const shortL = kind === 'sent' ? o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req)) : [];   // asked but not (fully) sent – just listed, no new order
   const fl = (zh) => shortL.length ? (zh ? `\n\n❌ 没货：` : `\n\n❌ No stock:`) + shortL.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + Math.round((Number(l.req) - (Number(l.sent) || 0)) * 1000) / 1000 + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
-  const zh = `${{ new:'🛒 新订单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
-  const en = `${{ new:'🛒 New order', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please confirm in the app when sent'}`;
+  const zh = `${{ new:'🛒 BSD 要货单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
+  const en = `${{ new:'🛒 BSD request', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${kind === 'sent' || kind === 'back' ? 'Please confirm received in the app' : 'Please open it in the app, check the quantities and tap Mark as sent'}`;
   return lang === 'en' ? en : lang === 'both' ? zh + '\n\n' + en : zh;
 }
 function afterNotice(){ closeSum(); if (MODE !== 'deliv') { MODE_SET = 'deliv'; MODE = 'deliv'; } DVIEW = null; renderDeliv(); window.scrollTo(0, 0); }   // done → the Deliveries list
@@ -1335,7 +1335,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v92';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v93';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
