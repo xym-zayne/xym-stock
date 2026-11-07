@@ -1014,8 +1014,8 @@ function renderDeliv(){
   const sendL = L.filter(canSend), recvL = L.filter(canRecv);
   const waitL = L.filter(o => (o.status === 'Requested' || o.status === 'Sent') && !canSend(o) && !canRecv(o));
   const doneL = L.filter(o => o.status === 'Received' || o.status === 'Cancelled' || o.status === 'Done');
-  const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['request', T('newReq')], ['jjsend', T('newJJSend')]] : [['order', T('newOrder')], ['send', T('newSend')]])
-    .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('');
+  const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['jjsend', T('newJJSend')]]   /* v98: Jinjang 'Request from BSD' removed (never used) – Send to BSD only */ : [['order', T('newOrder')], ['send', T('newSend')]])
+    .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'||m==='jjsend'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('');
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
   const done = doneL.length ? `<div class="group" style="cursor:pointer" onclick="DONE_OPEN=!DONE_OPEN;redraw(renderDeliv)">${DONE_OPEN ? '▾' : '▸'} ${T('done')} · ${doneL.length} <span class="sub">${T(DONE_OPEN ? 'tapHide' : 'tapShow')}</span></div>`
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
@@ -1382,7 +1382,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v97';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v98';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
