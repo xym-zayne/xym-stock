@@ -819,13 +819,27 @@ async function loadOrders(){
 // One message per supplier. Only-BSD suppliers (Soya Boss) keep the old one-line message.
 // Others: 明天麻烦下：\n<item> Jinjang 3包 / BSD 2包\n…\n谢谢
 function orderMsg(s){
-  if (s.lines.every(l => l.deliv === 'BSD')) {
+  const zu = u => (UNIT_ZH[String(u || '').toLowerCase()] || String(u || '').toLowerCase());
+  const nf = n => String(Math.round(Number(n) * 100) / 100);
+  if (!s.style && s.lines.every(l => l.deliv === 'BSD')) {   // Soya Boss: old one-line message
     const parts = s.lines.filter(l => Number(l.qty) > 0).map(l => `${l.qty} ${l.word}`);
     return [s.prefix, parts.join(' '), s.suffix].filter(Boolean).join(' ');
   }
-  const zu = u => (UNIT_ZH[String(u || '').toLowerCase()] || String(u || '').toLowerCase());
-  const rows = s.lines.map(l => { const j = Number(l.jj) || 0, b = Number(l.qty) || 0, u = zu(l.uom);
-    const p = [j > 0 ? `Jinjang ${j}${zu(l.jjUom || l.uom)}` : '', b > 0 ? `BSD ${b}${u}` : ''].filter(Boolean).join(' / ');
+  const one = s.lines.length === 1, un = l => l.oUnit || zu(l.uom), w = l => one ? '' : (l.word || '');
+  const jjI = s.lines.filter(l => Number(l.jj) > 0), bsI = s.lines.filter(l => Number(l.qty) > 0);
+  if (!jjI.length && !bsI.length) return '暂停一天';
+  if (s.style === 'block') {   // vege: Jinjang lines, then a 新店 block for BSD
+    const ln = (l, q) => `${w(l)}⇒${nf(q)}${un(l)}`;
+    return [...jjI.map(l => ln(l, l.jj)), ...(bsI.length ? ['新店', ...bsI.map(l => ln(l, l.qty))] : [])].join('\n');
+  }
+  if (s.style === 'oldnew') {   // 旧⇒… / 新⇒… (新⇒休息 when BSD needs nothing, 新⇒照旧 when same as Jinjang)
+    const it = (l, q) => `${w(l)}${nf(q)}${un(l)}`, a = jjI.map(l => it(l, l.jj)).join(' '), b = bsI.map(l => it(l, l.qty)).join(' ');
+    const out = ['旧⇒' + (a || '休息')];
+    if (s.lines.some(l => l.deliv !== 'JJ')) out.push('新⇒' + (b && b === a ? '照旧' : b || '休息'));
+    return out.join('\n');
+  }
+  const rows = s.lines.map(l => { const j = Number(l.jj) || 0, b = Number(l.qty) || 0, u = un(l);
+    const p = [j > 0 ? `Jinjang ${nf(j)}${u}` : '', b > 0 ? `BSD ${nf(b)}${u}` : ''].filter(Boolean).join(' / ');
     return p ? `${l.word} ${p}` : ''; }).filter(Boolean);
   return [(s.prefix || '').replace(/[：:]?$/, '：'), ...rows, s.suffix].filter(Boolean).join('\n');
 }
@@ -867,7 +881,7 @@ function card(s, si){
           : `${T('jjHas')}: <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}` + (ruleTxt(jlv, ju) ? ' · ' + esc(ruleTxt(jlv, ju)) : ` · <span style="color:var(--red)">${T('jjNoLv')}</span>`)
             + ' · ' + (l.jjToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${T('jjNotToday')}</span>`)
             + (isBoss() ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
-        const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl'), f === 'jj' ? l.jj : l.qty, '–');
+        const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl') + (l.oUnit ? ' · ' + l.oUnit : ''), f === 'jj' ? l.jj : l.qty, '–');
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
           <div class="meta">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${jjInfo ? '<br>' + jjInfo : ''}${bsdInfo ? '<br>' + bsdInfo : ''}</div></div>
@@ -904,7 +918,7 @@ function copyMsg(si){
 }
 function recordOrder(si){
   const s = OD.suppliers[si];
-  const lines = s.lines.filter(l => Number(l.qty) > 0 || Number(l.jj) > 0).map(l => ({ id:l.id, qty: Number(l.qty) || 0, jj: Number(l.jj) || 0 }));
+  const lines = s.lines.filter(l => Number(l.qty) > 0 || Number(l.jj) > 0).map(l => ({ id:l.id, qty: Number(l.qty) || 0, jj: Number(l.jj) || 0, unit: l.oUnit || l.uom, per: l.oPer || 1 }));
   if (!lines.length || s.offTomorrow) return;
   call('saveOrder', PIN, s.id, lines, orderMsg(s)).then(() => { s.orderedToday = true; toast(T('recorded')); drawOrders(); }).catch(e => toast(String(e.message||e)));
 }
@@ -1347,7 +1361,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v94';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v95';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
