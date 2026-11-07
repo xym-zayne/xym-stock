@@ -455,7 +455,7 @@ function drawList(){
       return `<div class="row ${i.counted?'done':'todo'}">
         <div class="info"><div class="name ${i.photo?'ph':''}" ${i.photo?`onclick="showPhoto(${i.row})"`:''}>${esc(itemName(i))}${sub?` <span class="sub">${esc(sub)}</span>`:''}${tickHtml(tickOf(i.id, i.at, inDay(i.at) && i.qty !== '' && i.min !== '' && i.min !== undefined && Number(i.qty) <= Number(i.min), i.so, i.jj), i.id)}</div>
           ${hint ? `<div class="hint">${esc(hint)}</div>` : ''}
-          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(uBoth(i.uom))}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.mef ? ' · <b style="color:var(--blue,#1a73e8)">'+T(i.mef === 'est' ? 'meEst' : 'meFill')+'</b>' : ''}${i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
+          <div class="meta">${i.photo?`<span class="phtag">${T('photo')}</span> · `:''}${esc(uBoth(i.uom))}${i.at ? ' · '+T('updated')+' '+esc(i.at) : ''}${i.mef ? ' · <b style="color:var(--blue,#1a73e8)">'+T(i.mef === 'est' ? 'meEst' : 'meFill')+'</b>' : ''}${i.jj && isBoss() ? ` · <a href="#" onclick="openJJLvId('${esc(i.id)}');return false">${T('setLv')}</a>` : i.lv && isBoss() ? lvLink(i, uName(String(i.uom).toLowerCase())) : ''}</div></div>
         <input class="qty ${(i.row in EDITS)?'changed':''}" inputmode="decimal" data-row="${i.row}" value="${esc(val)}" placeholder="${!i.counted && i.qty!=='' ? esc(i.qty) : '–'}">
       </div>`; }).map((h, k) => swipeWrap(by[g][k].id, h)).join('') + '</div>').join('') || `<div class="empty">${T('noItems')}</div>`;
   swipeRows();
@@ -818,6 +818,7 @@ async function loadOrders(){
 }
 // One message per supplier. Only-BSD suppliers (Soya Boss) keep the old one-line message.
 // Others: 明天麻烦下：\n<item> Jinjang 3包 / BSD 2包\n…\n谢谢
+const ZHAOJIU = ['S02'];   // suppliers where Zayne writes 新⇒照旧 (Kim Sui Groceries)
 function orderMsg(s){
   const zu = u => (UNIT_ZH[String(u || '').toLowerCase()] || String(u || '').toLowerCase());
   const nf = n => String(Math.round(Number(n) * 100) / 100);
@@ -829,12 +830,12 @@ function orderMsg(s){
   const off = !!(OD && OD.bsdOff), cap = s.lines.some(l => l.deliv !== 'JJ');   // BSD off day → 新⇒休息
   const jjI = s.lines.filter(l => Number(l.jj) > 0), bsI = off ? [] : s.lines.filter(l => Number(l.qty) > 0);
   if (!jjI.length && !bsI.length && !(off && cap)) return '暂停一天';
-  const last = s.lastBsd || {}, same = bsI.length && bsI.length === Object.keys(last).length && bsI.every(l => Number(last[l.id]) === Number(l.qty));   // 新⇒照旧 = same as BSD's previous order
+  const last = s.lastBsd || {}, same = ZHAOJIU.includes(s.id) && bsI.length && bsI.length === Object.keys(last).length && bsI.every(l => Number(last[l.id]) === Number(l.qty));   // 新⇒照旧 = same as BSD's previous order (Kim Sui only – BSD always orders the same there)
   if (s.style === 'block') {   // vege: Jinjang lines, then a 新店 block for BSD
     const ln = (l, q) => `${w(l)}⇒${nf(q)}${un(l)}`;
     return [...jjI.map(l => ln(l, l.jj)), ...(off && cap ? ['新店⇒休息'] : bsI.length ? ['新店', ...(same ? ['照旧'] : bsI.map(l => ln(l, l.qty)))] : [])].join('\n');
   }
-  if (s.style === 'oldnew') {   // 旧⇒… / 新⇒… (新⇒休息 when BSD needs nothing, 新⇒照旧 when same as Jinjang)
+  if (s.style === 'oldnew') {   // 旧⇒… / 新⇒… (新⇒休息 on BSD off day, 新⇒照旧 Kim Sui only)
     const it = (l, q) => `${w(l)}${nf(q)}${un(l)}`, a = jjI.map(l => it(l, l.jj)).join(' '), b = bsI.map(l => it(l, l.qty)).join(' ');
     const out = a ? ['旧⇒' + a] : [];
     if (cap && off) out.push('新⇒休息'); else if (b) out.push('新⇒' + (same ? '照旧' : b));
@@ -906,6 +907,24 @@ function openJJLv(si, li){
   $('#sList').innerHTML = `${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}${f('off', T('lvOff'))}`;
   $('#sBtns').innerHTML = `<button class="btn save" onclick="saveJJLv(${si},${li})">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
   $('#sum').classList.add('show');
+}
+// Owner: same Jinjang levels from the Jinjang count list (Jinjang / 增江 tab)
+function openJJLvId(id){
+  const i = DATA && DATA.items.find(x => x.id === id && x.jj); if (!i) return; const L = i.jlv || {}, u = esc(uName(String(i.uom || '').toLowerCase()));
+  const f = (k, lab) => `<label class="lv">${lab}<span><input id="jl_${k}" class="qty sm" inputmode="decimal" value="${esc(nz(L[k]) ? L[k] : '')}"> ${u}</span></label>`;
+  $('#sTitle').textContent = T('jjLvTitle', itemName(i)); $('#sText').textContent = T('jjLvNote');
+  $('#sList').innerHTML = `${f('min', T('lvMin'))}${f('rq', T('lvRq'))}${f('par', T('lvPar'))}${f('off', T('lvOff'))}`;
+  $('#sBtns').innerHTML = `<button class="btn save" onclick="saveJJLvId('${esc(id)}')">${T('save')}</button><button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
+  $('#sum').classList.add('show');
+}
+async function saveJJLvId(id){
+  const L = {}; ['min','rq','par','off'].forEach(k => L[k] = $('#jl_' + k).value.trim());
+  if (Object.values(L).find(v => v !== '' && isNaN(Number(v)))) { toast(T('numbers')); return; }
+  try { const r = await call('jjLevels', PIN, id, L); closeSum(); toast(T('lvSaved'));
+    DATA.items.filter(x => x.id === id && x.jj).forEach(x => { x.jlv = r; x.min = r.min; });
+    if (OD) OD.suppliers.forEach(s => s.lines.forEach(l => { if (l.id === id) l.jjLv = r; }));
+    redraw(drawList); }
+  catch(e){ toast(String(e.message||e)); }
 }
 async function saveJJLv(si, li){
   const l = OD.suppliers[si].lines[li], L = {}; ['min','rq','par','off'].forEach(k => L[k] = $('#jl_' + k).value.trim());
@@ -1363,7 +1382,7 @@ async function exportSt(ym){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v96';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v97';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
