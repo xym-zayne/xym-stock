@@ -970,9 +970,10 @@ let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
   MODE = 'deliv';
   if (!DV) DV = recall('deliv');
+  if (vrOn() && !VR) VR = recall('vr');
   if (DV) { renderDeliv(); refreshDeliv(); return; }
   $('#app').innerHTML = bootHtml();
-  try { DV = remember('deliv', await call('getDeliveries', PIN)); USER = DV.user; store.set('xym_role', DV.user.role); renderDeliv(); }
+  try { DV = remember('deliv', await call('getDeliveries', PIN)); USER = DV.user; store.set('xym_role', DV.user.role); renderDeliv(); loadVR(); }
   catch(e){
     const m = String(e.message||e);
     if (m.includes('PIN')) { store.del('xym_pin'); store.del('xym_role'); showLogin(T('again')); return; }
@@ -983,6 +984,7 @@ async function loadDeliv(){
 const doClean = () => DVIEW && DVIEW.kind === 'do' && !Object.keys(DVIEW.q || {}).length && !Object.keys(DVIEW.k || {}).length && !(DVIEW.extra || []).length;
 async function refreshDeliv(){
   if (!DV || DPEND || (DVIEW && !doClean())) return;
+  loadVR();
   try { const d = await call('getDeliveries', PIN);
     if (MODE!=='deliv' || DPEND || (DVIEW && !doClean()) || busy()) return;
     const changed = JSON.stringify(d.list) !== JSON.stringify(DV.list);
@@ -1019,10 +1021,11 @@ function renderDeliv(){
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
   const done = doneL.length ? `<div class="group" style="cursor:pointer" onclick="DONE_OPEN=!DONE_OPEN;redraw(renderDeliv)">${DONE_OPEN ? '▾' : '▸'} ${T('done')} · ${doneL.length} <span class="sub">${T(DONE_OPEN ? 'tapHide' : 'tapShow')}</span></div>`
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
-  const body = sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
+  const body = vrSec() + sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
-    `<div class="dbtns">${btns}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
+    `<div class="dbtns">${btns}${VR && VR.sides && VR.sides.length ? `<button class="btn clear" onclick="VRA=null;vrAddOpen()">${T('vrAdd')}</button>` : ''}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
+  vrBind();
 }
 const shownLine = o => l => o.status === 'Requested' || o.status === 'Cancelled' || Number(l.sent) > 0 || (l.recv !== '' && Number(l.recv) > 0);   // once sent, 0 lines are hidden
 function doRow(o, hot){
@@ -1364,8 +1367,9 @@ async function openStatement(back){
 let ST_YM = '';
 function drawSt(s, ym){
   try {
-    $('#sList').innerHTML = (s.list.map(o => `<div class="srow"><span>${esc(o.date.slice(8,10)+'/'+o.date.slice(5,7))} · ${esc(o.id)} · ${T('d'+o.dir)}</span><b>${o.dir==='BJ'?'−':''}RM ${o.total.toFixed(2)}</b></div>`).join('') || `<div class="empty">${T('stNone')}</div>`)
-      + `<div class="srow tot"><span>${T('stJB')}</span><b>RM ${s.jb.toFixed(2)}</b></div><div class="srow"><span>${T('stBJ')}</span><b>−RM ${s.bj.toFixed(2)}</b></div><div class="srow tot"><span>${T('stNet')}</span><b>RM ${s.net.toFixed(2)}</b></div>`;
+    const own = curUser().role === 'Owner';
+    $('#sList').innerHTML = (s.list.map((o, i) => `<div class="srow ${o.dir==='VB'&&own?'pick':''}" ${o.dir==='VB'&&own?`onclick="openVB(${i})"`:''}><span>${esc(o.date.slice(8,10)+'/'+o.date.slice(5,7))} · ${o.dir==='VB' ? esc(o.note) : esc(o.id)} · ${T('d'+o.dir)}${o.dir==='VB'&&own?' ›':''}</span><b>${o.dir==='BJ'?'−':''}RM ${o.total.toFixed(2)}</b></div>`).join('') || `<div class="empty">${T('stNone')}</div>`)
+      + `<div class="srow tot"><span>${T('stJB')}</span><b>RM ${s.jb.toFixed(2)}</b></div>${s.vb ? `<div class="srow"><span>${T('stVB')}</span><b>RM ${Number(s.vb).toFixed(2)}</b></div>` : ''}<div class="srow"><span>${T('stBJ')}</span><b>−RM ${s.bj.toFixed(2)}</b></div><div class="srow tot"><span>${T('stNet')}</span><b>RM ${s.net.toFixed(2)}</b></div>`;
     $('#sBtns').innerHTML = `<button class="btn save" id="xBtn" onclick="exportSt('${ym}')">${T('exportX')}</button><button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
   } catch(e){ $('#sList').innerHTML = `<div class="empty">${esc(String(e.message||e))}</div>`; }
 }
@@ -1378,11 +1382,99 @@ async function exportSt(ym){
   } catch(e){ b.disabled = false; b.textContent = T('exportX'); toast(String(e.message||e)); }
 }
 
+// ---------- v100: Vendor deliveries received (Owner only while testing) ----------
+// Supplier orders sent from the Order tab show here as cards; tick when the vendor's goods arrive.
+// BSD's received part goes onto the Jinjang statement (Jinjang pays the vendors, BSD pays Jinjang back).
+Object.assign(TXT.en, { vrTitle:'Vendor deliveries', vrTo:s=>s==='BSD'?'to BSD':'to Jinjang', vrOrdered:t=>`ordered ${t}`, vrUnpl:'not ordered in app',
+  vrHint:'Blank = arrived as ordered. Short? Type what came. Didn\'t come? Type 0.', vrAsked:'ordered', vrAll:'Received ✓', vrDone:(t,b)=>`✓ received ${t} · ${b}`,
+  vrNot:n=>`⚠ ${n} vendor order${n>1?'s':''} not confirmed`, vrAdd:'+ Vendor delivery', vrAddT:'Vendor delivery (not ordered in app)', vrPick:'Which vendor?',
+  vrWhere:'Delivered to', vrSaved:'Received ✓', vrNone:'Type at least one amount', dVB:'Vendor → BSD', stVB:'Vendor → BSD (paid by Jinjang)',
+  vbTitle:n=>`${n} – prices`, vbNote:'Price per vendor unit. A changed price is kept for next time.', vbSaved:'Price saved ✓' });
+Object.assign(TXT.zh, { vrTitle:'供应商送货', vrTo:s=>s==='BSD'?'送 BSD':'送增江', vrOrdered:t=>`${t} 订`, vrUnpl:'没在 app 订',
+  vrHint:'不填 = 照订的到齐。少了？填实际到的数量。没来？填 0。', vrAsked:'订了', vrAll:'已收到 ✓', vrDone:(t,b)=>`✓ ${t} 已收 · ${b}`,
+  vrNot:n=>`⚠ ${n} 张供应商订单还没确认收货`, vrAdd:'+ 供应商送货', vrAddT:'供应商送货（没在 app 订）', vrPick:'哪个供应商？',
+  vrWhere:'送到', vrSaved:'已收到 ✓', vrNone:'请至少填一个数量', dVB:'供应商 → BSD', stVB:'供应商 → BSD（增江付）',
+  vbTitle:n=>`${n} – 价钱`, vbNote:'价钱按供应商的单位。改了的价钱下次会照用。', vbSaved:'价钱已保存 ✓' });
+let VR = null, VRQ = {}, VR_NOT_OPEN = false;
+const vrOn = () => curUser().role === 'Owner';
+async function loadVR(force){
+  if (!vrOn()) { VR = null; return; }
+  if (!VR) VR = recall('vr');
+  if (!force && Object.keys(VRQ).length) return;
+  try { const d = await call('getVendorRecv', PIN); if (Object.keys(VRQ).length && !force) return;
+    const ch = JSON.stringify(d) !== JSON.stringify(VR); VR = remember('vr', d); if (ch && MODE === 'deliv' && !DVIEW && !busy()) redraw(renderDeliv); } catch(e){}
+}
+function vrSec(){
+  if (!VR || !VR.sides || !VR.sides.length) return '';
+  const open = VR.cards.filter(c => !c.done), done = VR.cards.filter(c => c.done);
+  const card = (c, k) => { const unit = l => esc(l.unit || '');
+    const rows = c.lines.map((l, j) => { const key = k + ':' + j, v = key in VRQ ? VRQ[key] : '';
+      return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.word ? ` <span class="sub">${esc(l.word)}</span>` : ''}</div>
+        <div class="meta">${T('vrAsked')} <b>${esc(l.q)}</b> ${unit(l)}</div></div>${qtyBox(`data-vr="${key}"`, l.unit || '', v, String(l.q))}</div>`; }).join('');
+    return `<div class="list" style="margin-bottom:10px"><div class="row"><div class="info"><div class="name" style="color:var(--brand)">🚚 ${esc(c.name)} · ${T('vrTo', c.side)}</div>
+      <div class="meta">${c.unplanned ? T('vrUnpl') : T('vrOrdered', c.at)}</div></div></div>${rows}
+      <div class="row"><div class="info"><div class="meta">${T('vrHint')}</div></div><button class="btn save" style="flex:0 0 auto" onclick="vrSave(${k})">${T('vrAll')}</button></div></div>`; };
+  const doneRow = c => `<div class="row done"><div class="info"><div class="name">${esc(c.name)} · ${T('vrTo', c.side)}</div><div class="meta">${T('vrDone', esc(c.recvAt), esc(areaName(c.recvBy)))} · ${c.lines.map(l => esc(l.word || l.name) + ' ' + esc(l.recv === '' ? l.q : l.recv) + esc(l.unit || '')).join(' · ')}</div></div></div>`;
+  const nc = VR.notConf || [];
+  const not = nc.length ? `<div class="group" style="cursor:pointer;color:var(--red)" onclick="VR_NOT_OPEN=!VR_NOT_OPEN;redraw(renderDeliv)">${VR_NOT_OPEN ? '▾' : '▸'} ${T('vrNot', nc.length)}</div>`
+    + (VR_NOT_OPEN ? `<div class="list">${nc.map(x => `<div class="row"><div class="info"><div class="name">${esc(x.name)} · ${T('vrTo', x.side)}</div><div class="meta">${esc(x.date.slice(8,10)+'/'+x.date.slice(5,7))} · ${esc(x.id)}</div></div></div>`).join('')}</div>` : '') : '';
+  if (!open.length && !done.length && !not) return '';
+  return `<div class="group">🚚 ${T('vrTitle')}${open.length ? ' · ' + open.length : ''}</div>` + open.map(c => card(c, VR.cards.indexOf(c))).join('')
+    + (done.length ? `<div class="list">${done.map(doneRow).join('')}</div>` : '') + not;
+}
+function vrBind(){
+  document.querySelectorAll('input[data-vr]').forEach(inp => inp.addEventListener('input', e => { const k = e.target.dataset.vr, v = e.target.value.trim(); if (v === '') delete VRQ[k]; else VRQ[k] = v; }));
+}
+async function vrSave(k){
+  const c = VR.cards[k]; if (!c) return;
+  const lines = c.lines.map((l, j) => { const v = VRQ[k + ':' + j]; return { id: l.id, q: v === undefined || v === '' ? l.q : Number(v) }; });
+  if (lines.some(l => isNaN(l.q))) { toast(T('numbers')); return; }
+  const btn = event && event.target; if (btn) { btn.disabled = true; btn.textContent = T('saving'); }
+  try { VR = remember('vr', await call('recvVendor', PIN, c.oid, c.side, lines, ''));
+    Object.keys(VRQ).filter(x => x.indexOf(k + ':') === 0).forEach(x => delete VRQ[x]); VRQ = {}; toast(T('vrSaved')); redraw(renderDeliv); }
+  catch(e){ if (btn) { btn.disabled = false; btn.textContent = T('vrAll'); } toast(String(e.message||e)); }
+}
+// "+ Vendor delivery": something a vendor dropped that was not ordered in the app
+let VRA = null;
+function vrAddOpen(si){
+  if (!VR) return; VRA = VRA && si === undefined ? VRA : { si: si === undefined ? -1 : si, side: (VRA && VRA.side) || 'BSD' };
+  const s = VR.sups[VRA.si];
+  $('#sTitle').textContent = T('vrAddT'); $('#sText').textContent = s ? '' : T('vrPick');
+  const sides = VR.sides.length > 1 ? `<div style="margin:6px 0">${T('vrWhere')}: ${VR.sides.map(x => `<button class="chip ${VRA.side===x?'on':''}" onclick="VRA.side='${x}';vrAddOpen()">${x==='BSD'?'BSD':T('jjLbl')}</button>`).join(' ')}</div>` : '';
+  $('#sList').innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px">${VR.sups.map((x, i) => `<button class="chip ${i===VRA.si?'on':''}" onclick="vrAddOpen(${i})">${esc(x.name)}</button>`).join('')}</div>` + sides
+    + (s ? s.items.map((it, j) => `<div class="row"><div class="info"><div class="name">${lineName(it)}${it.word ? ` <span class="sub">${esc(it.word)}</span>` : ''}</div></div>${qtyBox(`id="va_${j}"`, it.unit, '', '–')}</div>`).join('') : '');
+  $('#sBtns').innerHTML = (s ? `<button class="btn save" onclick="vrAddSave()">${T('vrAll')}</button>` : '') + `<button class="btn clear" onclick="closeSum()">${T('cancel')}</button>`;
+  $('#sum').classList.add('show');
+}
+async function vrAddSave(){
+  const s = VR.sups[VRA.si]; if (!s) return;
+  const lines = s.items.map((it, j) => ({ id: it.id, q: $('#va_' + j).value.trim() })).filter(l => l.q !== '');
+  if (lines.some(l => isNaN(Number(l.q)))) { toast(T('numbers')); return; }
+  if (!lines.filter(l => Number(l.q) > 0).length) { toast(T('vrNone')); return; }
+  try { VR = remember('vr', await call('recvVendor', PIN, '', VRA.side, lines.map(l => ({ id: l.id, q: Number(l.q) })), s.id)); VRA = null; closeSum(); toast(T('vrSaved')); redraw(renderDeliv); }
+  catch(e){ toast(String(e.message||e)); }
+}
+// Owner: statement → tap a "Vendor → BSD" entry → fix prices
+let VB = null;
+function openVB(i){
+  const s = repGet('st' + ST_YM), o = s && s.list[i]; if (!o || o.dir !== 'VB') return; VB = { o, ym: ST_YM };
+  $('#sTitle').textContent = T('vbTitle', o.note); $('#sText').textContent = T('vbNote');
+  $('#sList').innerHTML = o.lines.map((l, j) => `<div class="row"><div class="info"><div class="name">${lineName(l)}</div><div class="meta">${esc(l.qty)} ${esc(l.unit)} · RM ${Number(l.amount).toFixed(2)}</div></div>
+    <label class="qin"><span>RM</span><input class="qty sm" inputmode="decimal" id="vb_${j}" value="${esc(l.price)}"><span>/${esc(l.unit)}</span></label></div>`).join('');
+  $('#sBtns').innerHTML = `<button class="btn save" onclick="saveVB()">${T('save')}</button><button class="btn clear" onclick="openStatement(${ST_YM === ymOf(0) ? 0 : 1})">${T('cancel')}</button>`;
+}
+async function saveVB(){
+  const o = VB.o; let s = null;
+  for (let j = 0; j < o.lines.length; j++) { const v = $('#vb_' + j).value.trim(); if (v === '' || isNaN(Number(v))) { toast(T('numbers')); return; }
+    if (Number(v) !== Number(o.lines[j].price)) { try { s = await call('vendorPrice', PIN, o.id, o.lines[j].id, Number(v)); } catch(e){ toast(String(e.message||e)); return; } } }
+  toast(T('vbSaved')); if (s) repSet('st' + VB.ym, s); openStatement(VB.ym === ymOf(0) ? 0 : 1);
+}
+
 // ---------- Owner: switch to another account without typing its PIN ----------
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v99';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v100';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
