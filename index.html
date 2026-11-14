@@ -1393,13 +1393,13 @@ async function exportSt(ym){
 // BSD's received part goes onto the Jinjang statement (Jinjang pays the vendors, BSD pays Jinjang back).
 Object.assign(TXT.en, { vrTitle:'Vendor deliveries', vrTo:s=>s==='BSD'?'to BSD':'to Jinjang', vrOrdered:t=>`ordered ${t}`, vrUnpl:'not ordered in app',
   vrHint:'Less came? Change the number first.', vrAsked:'ordered', vrAll:'Received ✓', vrOk:s=>s==='BSD'?'✓ Vendor delivered to BSD':'✓ Vendor delivered to Jinjang',
-  vrNo:s=>s==='BSD'?'🔁 Went to Jinjang / didn\'t come':'🔁 Didn\'t come', vrZero:'🔁 nothing came from the vendor', vrDone:(t,b)=>`✓ received ${t} · ${b}`,
+  vrNo:s=>s==='BSD'?'🔁 Went to Jinjang / didn\'t come':'🔁 Didn\'t come', vrZero:'🔁 nothing came from the vendor', vrDone:t=>`✓ received ${t}`,
   vrNot:n=>`⚠ ${n} vendor order${n>1?'s':''} not confirmed`, vrAdd:'+ Vendor delivery', vrAddT:'Vendor delivery (not ordered in app)', vrPick:'Which vendor?',
   vrWhere:'Delivered to', vrSaved:'Received ✓', vrNone:'Type at least one amount', dVB:'Vendor → BSD', dCB:'Cash buy (paid by Jinjang)', stVB:'Vendor / cash buys → BSD (paid by Jinjang)',
   vbTitle:n=>`${n} – prices`, vbNote:'Price per vendor unit. A changed price is kept for next time.', vbSaved:'Price saved ✓' });
 Object.assign(TXT.zh, { vrTitle:'供应商送货', vrTo:s=>s==='BSD'?'送 BSD':'送增江', vrOrdered:t=>`${t} 订`, vrUnpl:'没在 app 订',
   vrHint:'到的比较少？先改数量。', vrAsked:'订了', vrAll:'已收到 ✓', vrOk:s=>s==='BSD'?'✓ 供应商送到 BSD':'✓ 供应商送到增江',
-  vrNo:s=>s==='BSD'?'🔁 送去增江 / 没来':'🔁 没来', vrZero:'🔁 供应商没送来', vrDone:(t,b)=>`✓ ${t} 已收 · ${b}`,
+  vrNo:s=>s==='BSD'?'🔁 送去增江 / 没来':'🔁 没来', vrZero:'🔁 供应商没送来', vrDone:t=>`✓ ${t} 已收`,
   vrNot:n=>`⚠ ${n} 张供应商订单还没确认收货`, vrAdd:'+ 供应商送货', vrAddT:'供应商送货（没在 app 订）', vrPick:'哪个供应商？',
   vrWhere:'送到', vrSaved:'已收到 ✓', vrNone:'请至少填一个数量', dVB:'供应商 → BSD', dCB:'现金买（增江付）', stVB:'供应商 / 现金买 → BSD（增江付）',
   vbTitle:n=>`${n} – 价钱`, vbNote:'价钱按供应商的单位。改了的价钱下次会照用。', vbSaved:'价钱已保存 ✓' });
@@ -1425,7 +1425,7 @@ function vrSec(){
       <div class="row" style="display:block"><div class="meta" style="margin-bottom:6px">${T('vrHint')}</div>
         <div class="dbtns" style="margin:0"><button class="btn save" onclick="vrSave(${k})">${T('vrOk', c.side)}</button><button class="btn clear" onclick="vrSave(${k}, true)">${T('vrNo', c.side)}</button></div></div></div>`; };
   const doneRow = c => { const none = c.lines.every(l => Number(l.recv) === 0 && l.recv !== '');
-    return `<div class="row done"><div class="info"><div class="name">${esc(c.name)} · ${T('vrTo', c.side)}</div><div class="meta">${T('vrDone', esc(c.recvAt), esc(areaName(c.recvBy)))} · ${none ? T('vrZero') : c.lines.map(l => esc(l.word || l.name) + ' ' + esc(l.recv === '' ? l.q : l.recv) + esc(l.unit || '')).join(' · ')}</div></div></div>`; };
+    return `<div class="row done"><div class="info"><div class="name">${esc(c.name)} · ${T('vrTo', c.side)}</div><div class="meta">${T('vrDone', esc(c.recvAt))} · ${none ? T('vrZero') : c.lines.map(l => esc(l.word || l.name) + ' ' + esc(l.recv === '' ? l.q : l.recv) + esc(l.unit || '')).join(' · ')}</div></div></div>`; };
   const nc = VR.notConf || [];
   const not = nc.length ? `<div class="group" style="cursor:pointer;color:var(--red)" onclick="VR_NOT_OPEN=!VR_NOT_OPEN;redraw(renderDeliv)">${VR_NOT_OPEN ? '▾' : '▸'} ${T('vrNot', nc.length)}</div>`
     + (VR_NOT_OPEN ? `<div class="list">${nc.map(x => `<div class="row"><div class="info"><div class="name">${esc(x.name)} · ${T('vrTo', x.side)}</div><div class="meta">${esc(x.date.slice(8,10)+'/'+x.date.slice(5,7))} · ${esc(x.id)}</div></div></div>`).join('')}</div>` : '') : '';
@@ -1558,7 +1558,9 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v103';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v104';
+Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
+Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
@@ -1872,8 +1874,8 @@ function renderDlog(){
   else if (z.error) body = `<div class="empty">${esc(z.error)}</div>`;
   else { const by = {}; (z.rows || []).forEach(r => { const g = r.grp || r.who || ''; (by[g] = by[g] || []).push(r); });
     body = Object.keys(by).sort().map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">${by[g].map(r =>
-      `<div class="row"><div class="info"><div class="name">${lineName(r)}</div><div class="meta">${esc(r.t)} · ${esc(areaName(r.who))}</div></div>
-        <div class="bigq">${esc(r.qty)}<small>${esc(uName(r.unit))}</small></div></div>`).join('')}</div>`).join('') || `<div class="empty">${T('dlogNone')}</div>`; }
+      `<div class="row ${r.carry?'todo':''}"><div class="info"><div class="name">${lineName(r)}</div><div class="meta">${r.carry ? `<span style="color:var(--red)">${T('dlCarry', r.carry.slice(8,10)+'/'+r.carry.slice(5,7))}</span>` : `${esc(r.t)} · ${esc(areaName(r.who))}${r.n > 1 ? ' · ' + T('dlTimes', r.n) : ''}`}</div></div>
+        <div class="bigq" ${r.carry?'style="opacity:.5"':''}>${esc(r.qty)}<small>${esc(uName(r.unit))}</small></div></div>`).join('')}</div>`).join('') || `<div class="empty">${T('dlogNone')}</div>`; }
   $('#app').innerHTML = `<header><h1>${T('dlogT')}</h1><button class="hmenu hx" onclick="closeUsage()" aria-label="Close">✕</button></header>${chips}${body}<div class="spacer"></div>`;
 }
 let UZ = null, UDAYS = 7;
