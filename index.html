@@ -589,6 +589,9 @@ function tabsHtml(){
   if (u.role === 'Jinjang' && !JJ_COUNT_ON) return '';
   if (u.role === 'Jinjang') { const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active), cm = meOn ? 'month' : 'daily';
     return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv') + delivBadge())}</div>`; }
+  if (isBarU()) { const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active), cm = meOn ? 'month' : 'daily';
+    const n = VR && VR.cards ? VR.cards.filter(c => !c.done).length : 0;
+    return `<div class="tabs"><button class="tab ${MODE===cm?'on':''}" onclick="setMode('${cm}')">${T(cm)}</button>${b('deliv',T('deliv') + (n ? ` <span class="badge">${n}</span>` : ''))}</div>`; }
   if (u.area === 'Kitchen' && u.role !== 'Jinjang') {
     const meOn = (DATA && DATA.me && DATA.me.active) || (MD && MD.me && MD.me.active);
     const cm = meOn ? 'month' : 'daily';
@@ -969,6 +972,7 @@ Object.assign(TXT.zh, { deliv:'送货', delivTitle:'增江 ⇄ BSD 送货', newO
 let DV = null, DVIEW = null, DLINES = [], DNOTE = '';
 async function loadDeliv(){
   MODE = 'deliv';
+  if (isBarU()) { DV = { side:'BAR', list:[], items:[], notify:{} }; VR = VR || recall('vr'); renderDeliv(); loadVR(); return; }   // Bar: vendor deliveries only
   if (!DV) DV = recall('deliv');
   if (vrOn() && !VR) VR = recall('vr');
   if (DV) { renderDeliv(); refreshDeliv(); return; }
@@ -984,7 +988,7 @@ async function loadDeliv(){
 const doClean = () => DVIEW && DVIEW.kind === 'do' && !Object.keys(DVIEW.q || {}).length && !Object.keys(DVIEW.k || {}).length && !(DVIEW.extra || []).length;
 async function refreshDeliv(){
   if (!DV || DPEND || (DVIEW && !doClean())) return;
-  loadVR();
+  loadVR(); if (DV.side === 'BAR') return;
   try { const d = await call('getDeliveries', PIN);
     if (MODE!=='deliv' || DPEND || (DVIEW && !doClean()) || busy()) return;
     const changed = JSON.stringify(d.list) !== JSON.stringify(DV.list);
@@ -1016,14 +1020,14 @@ function renderDeliv(){
   const sendL = L.filter(canSend), recvL = L.filter(canRecv);
   const waitL = L.filter(o => (o.status === 'Requested' || o.status === 'Sent') && !canSend(o) && !canRecv(o));
   const doneL = L.filter(o => o.status === 'Received' || o.status === 'Cancelled' || o.status === 'Done');
-  const btns = (side === 'VIEW' ? [] : side === 'JJ' ? [['jjsend', T('newJJSend')]]   /* v98: Jinjang 'Request from BSD' removed (never used) – Send to BSD only */ : [['order', T('newOrder')], ['send', T('newSend')]])
+  const btns = (side === 'VIEW' || side === 'BAR' ? [] : side === 'JJ' ? [['jjsend', T('newJJSend')]]   /* v98: Jinjang 'Request from BSD' removed (never used) – Send to BSD only */ : [['order', T('newOrder')], ['send', T('newSend')]])
     .map(([m, t]) => `<button class="btn ${m==='order'||m==='request'||m==='jjsend'?'save':'clear'}" onclick="newDO('${m}')">${t}</button>`).join('');
   const sec = (title, arr, hot) => arr.length ? `<div class="group">${title} · ${arr.length}</div><div class="list">${arr.map(o => doRow(o, hot)).join('')}</div>` : '';
   const done = doneL.length ? `<div class="group" style="cursor:pointer" onclick="DONE_OPEN=!DONE_OPEN;redraw(renderDeliv)">${DONE_OPEN ? '▾' : '▸'} ${T('done')} · ${doneL.length} <span class="sub">${T(DONE_OPEN ? 'tapHide' : 'tapShow')}</span></div>`
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
   const body = vrSec() + sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
-    `<div class="dbtns">${btns}${VR && VR.sides && VR.sides.length ? `<button class="btn clear" onclick="siOpen()">${T('siAdd')}</button>` : ''}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
+    `<div class="dbtns">${btns}${VR && VR.sides && VR.sides.length && curUser().role === 'Owner' ? `<button class="btn clear" onclick="siOpen()">${T('siAdd')}</button>` : ''}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
   vrBind();
 }
@@ -1400,7 +1404,8 @@ Object.assign(TXT.zh, { vrTitle:'供应商送货', vrTo:s=>s==='BSD'?'送 BSD':'
   vrWhere:'送到', vrSaved:'已收到 ✓', vrNone:'请至少填一个数量', dVB:'供应商 → BSD', dCB:'现金买（增江付）', stVB:'供应商 / 现金买 → BSD（增江付）',
   vbTitle:n=>`${n} – 价钱`, vbNote:'价钱按供应商的单位。改了的价钱下次会照用。', vbSaved:'价钱已保存 ✓' });
 let VR = null, VRQ = {}, VR_NOT_OPEN = false;
-const vrOn = () => curUser().role === 'Owner';
+const vrOn = () => curUser().role === 'Owner' || isBarU();
+const isBarU = () => { const u = curUser(); return u.role !== 'Owner' && u.role !== 'Viewer' && u.role !== 'Jinjang' && u.area === 'Bar'; };   // v103: Bar tests vendor deliveries
 async function loadVR(force){
   if (!vrOn()) { VR = null; return; }
   if (!VR) VR = recall('vr');
@@ -1553,7 +1558,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v102';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v103';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
