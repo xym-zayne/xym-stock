@@ -1023,7 +1023,7 @@ function renderDeliv(){
     + (DONE_OPEN ? `<div class="list">${doneL.map(o => doRow(o)).join('')}</div>` : '') : '';
   const body = vrSec() + sec(T('toRecv'), recvL, 1) + sec(T('toSend'), sendL, 1) + sec(T('waiting'), waitL) + done;
   $('#app').innerHTML = dHeader(T('delivTitle')) + tabsHtml() +
-    `<div class="dbtns">${btns}${VR && VR.sides && VR.sides.length ? `<button class="btn clear" onclick="VRA=null;vrAddOpen()">${T('vrAdd')}</button>` : ''}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
+    `<div class="dbtns">${btns}${VR && VR.sides && VR.sides.length ? `<button class="btn clear" onclick="siOpen()">${T('siAdd')}</button>` : ''}${isOwnerD() || side === 'VIEW' ? `<button class="btn ghost" onclick="openStatement(0)">${T('statement')}</button>` : ''}</div>` +
     (body || `<div class="empty">${T('nothing')}</div>`) + `<div class="spacer"></div>`;
   vrBind();
 }
@@ -1098,6 +1098,7 @@ async function submitNew(){
     .map(l => ({ id:l.id, qty: jjBlank(l) ? '' : Number(l.qty), kg: l.kg === '' ? '' : Number(l.kg), decide: jjBlank(l) }));
   if (!send.length) { toast(T('addSome')); return; }
   if (DVIEW.mode === 'send' || DVIEW.mode === 'jjsend') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
+  if (!kgSane(DLINES.map(l => ({ name: itemName(l), qty: l.qty, kg: l.kg, unit: l.unit })), submitNew)) return;
   // shows at once (number guessed = next number); the server saves in the background
   const mode = DVIEW.mode, note = DNOTE.trim(), keep = DLINES, u = curUser();
   // Noodle day (Friday): noodles in BSD's request become BSD's own self order (vendor drops at BSD, Jinjang pays) – Jinjang does not see it
@@ -1258,20 +1259,21 @@ function renderDO(){
     const t = e.target, v = t.value.trim();
     if (t.dataset.line) DVIEW[t.dataset.f][t.dataset.line] = v; else DVIEW.extra[t.dataset.k][t.dataset.f] = v; }));
 }
-function doLines(o, recv){
-  const out = o.lines.map(l => ({ line:l.line, wt:l.wt, name:itemName(l),
+function doLines(o, recv, retry){
+  const out = o.lines.map(l => ({ line:l.line, wt:l.wt, name:itemName(l), unit:l.unit,
     qty: l.line in DVIEW.q ? DVIEW.q[l.line] : (recv ? l.sent : l.req),
     kg: l.line in DVIEW.k ? DVIEW.k[l.line] : (recv ? l.sentKg : '') }));
-  DVIEW.extra.forEach(l => out.push({ id:l.id, wt:l.wt, name:itemName(l), qty:l.qty, kg:l.kg }));
+  DVIEW.extra.forEach(l => out.push({ id:l.id, wt:l.wt, name:itemName(l), unit:l.unit, qty:l.qty, kg:l.kg }));
   if (out.find(x => bad(x.qty) || bad(x.kg))) { toast(T('numbers')); return null; }
   const noQ = out.find(x => x.wt && Number(x.kg) > 0 && !(Number(x.qty) > 0)); if (noQ) { toast(T('needQty', noQ.name)); return null; }
   const miss = out.find(x => x.wt && Number(x.qty) > 0 && !(Number(x.kg) > 0));
   if (miss) { toast(T('needKg', miss.name)); return null; }
+  if (retry && !kgSane(out, retry)) return null;
   return out.map(x => { const r = { qty: Number(x.qty) || 0, kg: x.kg === '' || x.kg === undefined ? '' : Number(x.kg) }; if (x.line) r.line = x.line; else r.id = x.id; return r; });
 }
 const FOLLOW = {};   // DO id → follow-up DO id made when Jinjang sent short
 async function doAct(fn, recv, okMsg, later){
-  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, recv); if (!lines) return;
+  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, recv, () => doAct(fn, recv, okMsg, later)); if (!lines) return;
   later = false;   // no follow-up order when Jinjang is short (Zayne 30 Oct: too many DOs) – the Stock / Daily screens show "ordered dd/mm · Jinjang no stock" instead
   if (false) {
     const sh = o.lines.filter(l => Number(l.req) > 0).map(l => { const x = lines.find(y => y.line === l.line), q = x ? x.qty : 0;
@@ -1304,7 +1306,7 @@ async function doAct(fn, recv, okMsg, later){
 function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 // Sender fixes a sent DO (missed item / wrong number) – same DO number, the other side is told again
 function doEdit(){
-  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, true); if (!lines) return;
+  const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, true, doEdit); if (!lines) return;
   const snap = JSON.stringify(o), now = hhmm(), extra = DVIEW.extra;
   lines.forEach(x => { const l = x.line && o.lines.find(y => y.line === x.line); if (!l) return; l.sent = x.qty; if (l.wt) l.sentKg = x.kg; });
   extra.forEach(x => o.lines.push({ line: o.id + '-' + (o.lines.length + 1), id: x.id, name: x.name, zh: x.zh, unit: x.unit, wt: x.wt, req: '', sent: Number(x.qty) || 0, recv: '', added: true, sentKg: x.wt ? x.kg : '', recvKg: '', decide: false }));
@@ -1368,7 +1370,7 @@ let ST_YM = '';
 function drawSt(s, ym){
   try {
     const own = curUser().role === 'Owner';
-    $('#sList').innerHTML = (s.list.map((o, i) => `<div class="srow ${o.dir==='VB'&&own?'pick':''}" ${o.dir==='VB'&&own?`onclick="openVB(${i})"`:''}><span>${esc(o.date.slice(8,10)+'/'+o.date.slice(5,7))} · ${o.dir==='VB' ? esc(o.note) : esc(o.id)} · ${T('d'+o.dir)}${o.dir==='VB'&&own?' ›':''}</span><b>${o.dir==='BJ'?'−':''}RM ${o.total.toFixed(2)}</b></div>`).join('') || `<div class="empty">${T('stNone')}</div>`)
+    $('#sList').innerHTML = (s.list.map((o, i) => `<div class="srow ${o.dir==='VB'&&own?'pick':''}" ${o.dir==='VB'&&own?`onclick="openVB(${i})"`:''}><span>${esc(o.date.slice(8,10)+'/'+o.date.slice(5,7))} · ${o.dir==='VB' || o.dir==='CB' ? esc(o.note) : esc(o.id)} · ${T('d'+o.dir)}${o.dir==='VB'&&own?' ›':''}</span><b>${o.dir==='BJ'?'−':''}RM ${o.total.toFixed(2)}</b></div>`).join('') || `<div class="empty">${T('stNone')}</div>`)
       + `<div class="srow tot"><span>${T('stJB')}</span><b>RM ${s.jb.toFixed(2)}</b></div>${s.vb ? `<div class="srow"><span>${T('stVB')}</span><b>RM ${Number(s.vb).toFixed(2)}</b></div>` : ''}<div class="srow"><span>${T('stBJ')}</span><b>−RM ${s.bj.toFixed(2)}</b></div><div class="srow tot"><span>${T('stNet')}</span><b>RM ${s.net.toFixed(2)}</b></div>`;
     $('#sBtns').innerHTML = `<button class="btn save" id="xBtn" onclick="exportSt('${ym}')">${T('exportX')}</button><button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
   } catch(e){ $('#sList').innerHTML = `<div class="empty">${esc(String(e.message||e))}</div>`; }
@@ -1386,14 +1388,16 @@ async function exportSt(ym){
 // Supplier orders sent from the Order tab show here as cards; tick when the vendor's goods arrive.
 // BSD's received part goes onto the Jinjang statement (Jinjang pays the vendors, BSD pays Jinjang back).
 Object.assign(TXT.en, { vrTitle:'Vendor deliveries', vrTo:s=>s==='BSD'?'to BSD':'to Jinjang', vrOrdered:t=>`ordered ${t}`, vrUnpl:'not ordered in app',
-  vrHint:'Blank = arrived as ordered. Short? Type what came. Didn\'t come? Type 0.', vrAsked:'ordered', vrAll:'Received ✓', vrDone:(t,b)=>`✓ received ${t} · ${b}`,
+  vrHint:'Less came? Change the number first.', vrAsked:'ordered', vrAll:'Received ✓', vrOk:s=>s==='BSD'?'✓ Vendor delivered to BSD':'✓ Vendor delivered to Jinjang',
+  vrNo:s=>s==='BSD'?'🔁 Went to Jinjang / didn\'t come':'🔁 Didn\'t come', vrZero:'🔁 nothing came from the vendor', vrDone:(t,b)=>`✓ received ${t} · ${b}`,
   vrNot:n=>`⚠ ${n} vendor order${n>1?'s':''} not confirmed`, vrAdd:'+ Vendor delivery', vrAddT:'Vendor delivery (not ordered in app)', vrPick:'Which vendor?',
-  vrWhere:'Delivered to', vrSaved:'Received ✓', vrNone:'Type at least one amount', dVB:'Vendor → BSD', stVB:'Vendor → BSD (paid by Jinjang)',
+  vrWhere:'Delivered to', vrSaved:'Received ✓', vrNone:'Type at least one amount', dVB:'Vendor → BSD', dCB:'Cash buy (paid by Jinjang)', stVB:'Vendor / cash buys → BSD (paid by Jinjang)',
   vbTitle:n=>`${n} – prices`, vbNote:'Price per vendor unit. A changed price is kept for next time.', vbSaved:'Price saved ✓' });
 Object.assign(TXT.zh, { vrTitle:'供应商送货', vrTo:s=>s==='BSD'?'送 BSD':'送增江', vrOrdered:t=>`${t} 订`, vrUnpl:'没在 app 订',
-  vrHint:'不填 = 照订的到齐。少了？填实际到的数量。没来？填 0。', vrAsked:'订了', vrAll:'已收到 ✓', vrDone:(t,b)=>`✓ ${t} 已收 · ${b}`,
+  vrHint:'到的比较少？先改数量。', vrAsked:'订了', vrAll:'已收到 ✓', vrOk:s=>s==='BSD'?'✓ 供应商送到 BSD':'✓ 供应商送到增江',
+  vrNo:s=>s==='BSD'?'🔁 送去增江 / 没来':'🔁 没来', vrZero:'🔁 供应商没送来', vrDone:(t,b)=>`✓ ${t} 已收 · ${b}`,
   vrNot:n=>`⚠ ${n} 张供应商订单还没确认收货`, vrAdd:'+ 供应商送货', vrAddT:'供应商送货（没在 app 订）', vrPick:'哪个供应商？',
-  vrWhere:'送到', vrSaved:'已收到 ✓', vrNone:'请至少填一个数量', dVB:'供应商 → BSD', stVB:'供应商 → BSD（增江付）',
+  vrWhere:'送到', vrSaved:'已收到 ✓', vrNone:'请至少填一个数量', dVB:'供应商 → BSD', dCB:'现金买（增江付）', stVB:'供应商 / 现金买 → BSD（增江付）',
   vbTitle:n=>`${n} – 价钱`, vbNote:'价钱按供应商的单位。改了的价钱下次会照用。', vbSaved:'价钱已保存 ✓' });
 let VR = null, VRQ = {}, VR_NOT_OPEN = false;
 const vrOn = () => curUser().role === 'Owner';
@@ -1408,13 +1412,15 @@ function vrSec(){
   if (!VR || !VR.sides || !VR.sides.length) return '';
   const open = VR.cards.filter(c => !c.done), done = VR.cards.filter(c => c.done);
   const card = (c, k) => { const unit = l => esc(l.unit || '');
-    const rows = c.lines.map((l, j) => { const key = k + ':' + j, v = key in VRQ ? VRQ[key] : '';
+    const rows = c.lines.map((l, j) => { const key = k + ':' + j, v = key in VRQ ? VRQ[key] : String(l.q);
       return `<div class="row"><div class="info"><div class="name">${lineName(l)}${l.word ? ` <span class="sub">${esc(l.word)}</span>` : ''}</div>
         <div class="meta">${T('vrAsked')} <b>${esc(l.q)}</b> ${unit(l)}</div></div>${qtyBox(`data-vr="${key}"`, l.unit || '', v, String(l.q))}</div>`; }).join('');
     return `<div class="list" style="margin-bottom:10px"><div class="row"><div class="info"><div class="name" style="color:var(--brand)">🚚 ${esc(c.name)} · ${T('vrTo', c.side)}</div>
       <div class="meta">${c.unplanned ? T('vrUnpl') : T('vrOrdered', c.at)}</div></div></div>${rows}
-      <div class="row"><div class="info"><div class="meta">${T('vrHint')}</div></div><button class="btn save" style="flex:0 0 auto" onclick="vrSave(${k})">${T('vrAll')}</button></div></div>`; };
-  const doneRow = c => `<div class="row done"><div class="info"><div class="name">${esc(c.name)} · ${T('vrTo', c.side)}</div><div class="meta">${T('vrDone', esc(c.recvAt), esc(areaName(c.recvBy)))} · ${c.lines.map(l => esc(l.word || l.name) + ' ' + esc(l.recv === '' ? l.q : l.recv) + esc(l.unit || '')).join(' · ')}</div></div></div>`;
+      <div class="row" style="display:block"><div class="meta" style="margin-bottom:6px">${T('vrHint')}</div>
+        <div class="dbtns" style="margin:0"><button class="btn save" onclick="vrSave(${k})">${T('vrOk', c.side)}</button><button class="btn clear" onclick="vrSave(${k}, true)">${T('vrNo', c.side)}</button></div></div></div>`; };
+  const doneRow = c => { const none = c.lines.every(l => Number(l.recv) === 0 && l.recv !== '');
+    return `<div class="row done"><div class="info"><div class="name">${esc(c.name)} · ${T('vrTo', c.side)}</div><div class="meta">${T('vrDone', esc(c.recvAt), esc(areaName(c.recvBy)))} · ${none ? T('vrZero') : c.lines.map(l => esc(l.word || l.name) + ' ' + esc(l.recv === '' ? l.q : l.recv) + esc(l.unit || '')).join(' · ')}</div></div></div>`; };
   const nc = VR.notConf || [];
   const not = nc.length ? `<div class="group" style="cursor:pointer;color:var(--red)" onclick="VR_NOT_OPEN=!VR_NOT_OPEN;redraw(renderDeliv)">${VR_NOT_OPEN ? '▾' : '▸'} ${T('vrNot', nc.length)}</div>`
     + (VR_NOT_OPEN ? `<div class="list">${nc.map(x => `<div class="row"><div class="info"><div class="name">${esc(x.name)} · ${T('vrTo', x.side)}</div><div class="meta">${esc(x.date.slice(8,10)+'/'+x.date.slice(5,7))} · ${esc(x.id)}</div></div></div>`).join('')}</div>` : '') : '';
@@ -1423,16 +1429,16 @@ function vrSec(){
     + (done.length ? `<div class="list">${done.map(doneRow).join('')}</div>` : '') + not;
 }
 function vrBind(){
-  document.querySelectorAll('input[data-vr]').forEach(inp => inp.addEventListener('input', e => { const k = e.target.dataset.vr, v = e.target.value.trim(); if (v === '') delete VRQ[k]; else VRQ[k] = v; }));
+  document.querySelectorAll('input[data-vr]').forEach(inp => inp.addEventListener('input', e => { VRQ[e.target.dataset.vr] = e.target.value.trim(); }));
 }
-async function vrSave(k){
+async function vrSave(k, none){
   const c = VR.cards[k]; if (!c) return;
-  const lines = c.lines.map((l, j) => { const v = VRQ[k + ':' + j]; return { id: l.id, q: v === undefined || v === '' ? l.q : Number(v) }; });
+  const lines = c.lines.map((l, j) => { const v = VRQ[k + ':' + j]; return { id: l.id, q: none ? 0 : v === undefined ? l.q : v === '' ? 0 : Number(v) }; });
   if (lines.some(l => isNaN(l.q))) { toast(T('numbers')); return; }
-  const btn = event && event.target; if (btn) { btn.disabled = true; btn.textContent = T('saving'); }
+  const btn = event && event.target, lbl = btn ? btn.textContent : ''; if (btn) { btn.disabled = true; btn.textContent = T('saving'); }
   try { VR = remember('vr', await call('recvVendor', PIN, c.oid, c.side, lines, ''));
     Object.keys(VRQ).filter(x => x.indexOf(k + ':') === 0).forEach(x => delete VRQ[x]); VRQ = {}; toast(T('vrSaved')); redraw(renderDeliv); }
-  catch(e){ if (btn) { btn.disabled = false; btn.textContent = T('vrAll'); } toast(String(e.message||e)); }
+  catch(e){ if (btn) { btn.disabled = false; btn.textContent = lbl; } toast(String(e.message||e)); }
 }
 // "+ Vendor delivery": something a vendor dropped that was not ordered in the app
 let VRA = null;
@@ -1454,6 +1460,79 @@ async function vrAddSave(){
   try { VR = remember('vr', await call('recvVendor', PIN, '', VRA.side, lines.map(l => ({ id: l.id, q: Number(l.q) })), s.id)); VRA = null; closeSum(); toast(T('vrSaved')); redraw(renderDeliv); }
   catch(e){ toast(String(e.message||e)); }
 }
+// ---------- v101: "+ Stock in" – everything that comes in from outside Jinjang ----------
+// Vendor (not ordered in the app) · Cash buy (receipt photo + total) · Other / Owner store (e.g. oil kept elsewhere, no receipt)
+Object.assign(TXT.en, { siAdd:'+ Stock in', siT:'Stock in', siFrom:'Where is it from?', siVendor:'Vendor (not ordered in app)', siCash:'Cash buy (e.g. 99 Speedmart)', siOther:'Other / Owner store',
+  siWhat:'What was bought', siTotal:'Total RM', siFood:'Food', siNonFood:'Non-food', siPaid:'Paid by', siPhoto:'📷 Receipt photo', siPhotoOpt:'📷 Photo (optional)', siPhotoOk:'📷 Photo added ✓',
+  siItem:'Item', siPick:'– pick an item –', siQty:'Amount', siPrice:'Price per unit (RM)', siNote:'Note (optional)', siSaved:'Saved ✓', siMonth:(n,t)=>`This month: ${n} · RM ${t}`,
+  srcCash:'Cash buy', srcOther:'Other / Owner store', pdBSD:'BSD cash', pdJJ:'Jinjang', pdOwner:'Owner',
+  kgBigT:'Check the weight', kgBig:(n,kg,q,u)=>`${n}: ${kg} kg for ${q} ${u}. That is ${Math.round(kg/q*10)/10} kg each – is this correct?`, kgYes:'Yes, it is correct', kgFix:'No, let me fix it' });
+Object.assign(TXT.zh, { siAdd:'+ 进货', siT:'进货', siFrom:'从哪里来？', siVendor:'供应商（没在 app 订）', siCash:'现金买（例如 99 Speedmart）', siOther:'其他 / 老板的仓',
+  siWhat:'买了什么', siTotal:'总共 RM', siFood:'食物', siNonFood:'非食物', siPaid:'谁付钱', siPhoto:'📷 收据照片', siPhotoOpt:'📷 照片（可不拍）', siPhotoOk:'📷 已加照片 ✓',
+  siItem:'货品', siPick:'– 选货品 –', siQty:'数量', siPrice:'每单位价钱 (RM)', siNote:'备注（可不填）', siSaved:'已保存 ✓', siMonth:(n,t)=>`本月：${n} 次 · RM ${t}`,
+  srcCash:'现金买', srcOther:'其他 / 老板的仓', pdBSD:'BSD 现金', pdJJ:'增江', pdOwner:'老板',
+  kgBigT:'检查重量', kgBig:(n,kg,q,u)=>`${n}：${q} ${u} 共 ${kg} 公斤，每个 ${Math.round(kg/q*10)/10} 公斤 – 对吗？`, kgYes:'对，没错', kgFix:'不对，我改' });
+let SI = null;
+function siOpen(src){
+  if (!VR) return;
+  if (src === 'vendor') { VRA = null; vrAddOpen(); return; }
+  SI = src ? (SI && SI.src === src ? SI : { src, food: true, paid: 'BSD', photo: '' }) : null;
+  const chip = (on, js, t) => `<button class="chip ${on?'on':''}" onclick="${js}">${t}</button>`;
+  $('#sTitle').textContent = T('siT'); $('#sText').textContent = SI ? '' : T('siFrom');
+  const srcs = `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px">${chip(false, "siOpen('vendor')", T('siVendor'))}${chip(SI && SI.src==='cash', "siOpen('cash')", T('siCash'))}${chip(SI && SI.src==='other', "siOpen('other')", T('siOther'))}</div>`;
+  const ins = (VR.ins || []), tot = ins.reduce((a, x) => a + (Number(x.amount) || 0), 0);
+  const recent = ins.length ? `<div class="group">${T('siMonth', ins.length, tot.toFixed(2))}</div>` + ins.slice(0, 8).map(x => `<div class="srow"><span>${esc(x.at)} · ${esc(x.src === 'Cash' ? T('srcCash') : T('srcOther'))} · ${esc(x.what)}${x.qty !== '' ? ' ' + esc(x.qty) + ' ' + esc(x.unit) : ''}${x.photo ? ` · <a href="${esc(x.photo)}" target="_blank">📷</a>` : ''}</span><b>RM ${Number(x.amount).toFixed(2)}</b></div>`).join('') : '';
+  let form = '';
+  if (SI && SI.src === 'cash') form = `<label class="lv">${T('siWhat')}<span><input id="si_what" class="qty" style="width:100%;text-align:left" placeholder="e.g. cooking oil 2 tins"></span></label>
+    <label class="lv">${T('siTotal')}<span><input id="si_total" class="qty sm" inputmode="decimal"></span></label>
+    <div style="margin:6px 0">${chip(SI.food, 'SI.food=true;siDraw()', T('siFood'))} ${chip(!SI.food, 'SI.food=false;siDraw()', T('siNonFood'))}</div>
+    <div style="margin:6px 0">${T('siPaid')}: ${chip(SI.paid==='BSD', "SI.paid='BSD';siDraw()", T('pdBSD'))} ${chip(SI.paid==='Jinjang', "SI.paid='Jinjang';siDraw()", T('pdJJ'))} ${chip(SI.paid==='Owner', "SI.paid='Owner';siDraw()", T('pdOwner'))}</div>
+    <label class="btn ghost" style="display:block;text-align:center;margin:8px 0" id="si_ph">${T('siPhoto')}<input type="file" accept="image/*" capture="environment" style="display:none" onchange="siPhoto(this)"></label>
+    <label class="lv">${T('siNote')}<span><input id="si_note" class="qty" style="width:100%;text-align:left"></span></label>`;
+  if (SI && SI.src === 'other') form = `<label class="lv">${T('siItem')}<span><select id="si_item" class="qty" style="width:100%;text-align:left" onchange="siItem()"><option value="">${T('siPick')}</option>${(VR.items || []).map(i => `<option value="${esc(i.id)}">${esc(LANG === 'zh' && i.zh ? i.zh + ' ' + i.name : i.name + (i.zh ? ' ' + i.zh : ''))}</option>`).join('')}</select></span></label>
+    <label class="lv">${T('siQty')}<span><input id="si_qty" class="qty sm" inputmode="decimal"> <b id="si_unit"></b></span></label>
+    <label class="lv">${T('siPrice')}<span><input id="si_price" class="qty sm" inputmode="decimal"></span></label>
+    <label class="btn ghost" style="display:block;text-align:center;margin:8px 0" id="si_ph">${T('siPhotoOpt')}<input type="file" accept="image/*" capture="environment" style="display:none" onchange="siPhoto(this)"></label>
+    <label class="lv">${T('siNote')}<span><input id="si_note" class="qty" style="width:100%;text-align:left"></span></label>`;
+  $('#sList').innerHTML = srcs + form + recent;
+  $('#sBtns').innerHTML = (SI ? `<button class="btn save" id="si_save" onclick="siSave()">${T('save')}</button>` : '') + `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
+  $('#sum').classList.add('show');
+}
+// redraw keeping what was typed
+function siDraw(){ const keep = {}; ['si_what','si_total','si_note','si_item','si_qty','si_price'].forEach(k => { const el = $('#' + k); if (el) keep[k] = el.value; });
+  siOpen(SI.src); const ph = SI.photo; Object.keys(keep).forEach(k => { const el = $('#' + k); if (el) el.value = keep[k]; }); if (ph) { SI.photo = ph; $('#si_ph').firstChild.textContent = T('siPhotoOk'); } }
+function siItem(){ const i = (VR.items || []).find(x => x.id === $('#si_item').value); $('#si_unit').textContent = i ? uName(String(i.unit || '').toLowerCase()) : ''; $('#si_price').value = i && i.price ? i.price : ''; }
+// photo → shrink to 1280 px JPEG before upload (phone photos are big)
+function siPhoto(inp){
+  const f = inp.files && inp.files[0]; if (!f) return; const rd = new FileReader();
+  rd.onload = () => { const im = new Image(); im.onload = () => { const sc = Math.min(1, 1280 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+    cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    SI.photo = cv.toDataURL('image/jpeg', 0.75); $('#si_ph').firstChild.textContent = T('siPhotoOk'); }; im.src = rd.result; };
+  rd.readAsDataURL(f);
+}
+async function siSave(){
+  const g = k => { const el = $('#' + k); return el ? el.value.trim() : ''; };
+  const rec = SI.src === 'cash' ? { src:'cash', what: g('si_what'), total: g('si_total'), food: SI.food, paidBy: SI.paid, note: g('si_note'), photo: SI.photo }
+    : { src:'other', item: g('si_item'), qty: g('si_qty'), price: g('si_price'), note: g('si_note'), photo: SI.photo };
+  if ([rec.total, rec.qty, rec.price].some(v => v !== undefined && v !== '' && isNaN(Number(v)))) { toast(T('numbers')); return; }
+  const b = $('#si_save'); b.disabled = true; b.textContent = T('saving');
+  try { VR = remember('vr', await call('stockIn', PIN, rec)); toast(T('siSaved')); siOpen(); }
+  catch(e){ b.disabled = false; b.textContent = T('save'); toast(String(e.message||e)); }
+}
+// ---------- v101: weight check – stops typos like 6685 kg for 2 bundles ----------
+const KG_MAX = 50;   // kg per bag / bundle / box above this asks "is this correct?"
+let KG_OK = '';
+function kgSane(list, retry){
+  const big = list.filter(x => Number(x.kg) > 0 && Number(x.kg) / Math.max(Number(x.qty) || 1, 0.001) > KG_MAX);
+  if (!big.length) return true;
+  const sig = JSON.stringify(big.map(x => [x.name, x.qty, x.kg]));
+  if (KG_OK === sig) { KG_OK = ''; return true; }
+  const x = big[0]; KG_RETRY = () => { KG_OK = sig; closeSum(); retry(); };
+  $('#sTitle').textContent = T('kgBigT'); $('#sText').textContent = T('kgBig', x.name, Number(x.kg), Number(x.qty) || 1, uName(String(x.unit || '').toLowerCase()));
+  $('#sList').innerHTML = ''; $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('kgFix')}</button><button class="btn save" onclick="KG_RETRY()">${T('kgYes')}</button>`;
+  $('#sum').classList.add('show'); return false;
+}
+let KG_RETRY = null;
 // Owner: statement → tap a "Vendor → BSD" entry → fix prices
 let VB = null;
 function openVB(i){
@@ -1474,7 +1553,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v100';   // shown beside Log out – tells which version a phone is running
+const APP_V = 'v101';   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
   if (btn) btn.classList.add('spin'); runOutbox();
   const f = { daily: refreshDaily, month: refreshME, order: refreshOrders, deliv: refreshDeliv, stock: refreshStock }[MODE];
