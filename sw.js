@@ -1,6 +1,6 @@
 // XYM Inventory – offline shell. Page is always fetched fresh when online (so updates arrive by themselves);
 // the saved copy is only used when there is no internet.
-const CACHE = 'xym-v98';
+const CACHE = 'xym-v99';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', 'mascot.png', 'mascot-marks.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL))); });
 self.addEventListener('activate', e => e.waitUntil(
@@ -16,7 +16,7 @@ self.addEventListener('fetch', e => {
 self.addEventListener('push', e => {
   let d = {}; try { const j = e.data ? e.data.json() : {}; d = j.data || j.notification || j; } catch (x) { d = { body: e.data ? e.data.text() : '' }; }
   e.waitUntil(self.registration.showNotification(d.title || 'XYM Inventory', { body: d.body || '', tag: d.tag || 'xym', renotify: true,
-    icon: 'icon-192.png', badge: 'icon-192.png', data: { link: d.link || './?go=deliv' } }));
+    icon: 'icon-192.png', badge: 'badge.png', data: { link: d.link || './?go=deliv' } }));
 });
 self.addEventListener('notificationclick', e => {
   e.notification.close();
