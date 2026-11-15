@@ -839,8 +839,14 @@ function orderMsg(s){
     return [...jjI.map(l => ln(l, l.jj)), ...(off && cap ? ['新店⇒休息'] : bsI.length ? ['新店', ...(same ? ['照旧'] : bsI.map(l => ln(l, l.qty)))] : [])].join('\n');
   }
   if (s.style === 'oldnew') {   // 旧⇒… / 新⇒… (新⇒休息 on BSD off day, 新⇒照旧 Kim Sui only)
-    const it = (l, q) => `${w(l)}${nf(q)}${un(l)}`, a = jjI.map(l => it(l, l.jj)).join(' '), b = bsI.map(l => it(l, l.qty)).join(' ');
-    const out = a ? ['旧⇒' + a] : [];
+    // v106: Jinjang tauge is written in the vendor's bags (2 kg / 3 kg): 5 kg → "豆芽2kg 3kg各一份"
+    const bags = q => { q = Number(q); if (!Number.isInteger(q) || q < 2) return null; let b = Math.floor(q / 3); while (b >= 0 && (q - 3 * b) % 2) b--; if (b < 0) return null; const a = (q - 3 * b) / 2;
+      return a === 1 && b === 1 ? '2kg 3kg各一份' : [a ? '2kg' + (a > 1 ? `×${a}份` : '') : '', b ? '3kg' + (b > 1 ? `×${b}份` : '') : ''].filter(Boolean).join(' '); };
+    const it = (l, q, jj) => jj && l.id === 'RM077' && bags(q) ? `${w(l)}${bags(q)}` : `${w(l)}${nf(q)}${un(l)}`;
+    const own = jjI.filter(l => l.src === 'BSD'), norm = jjI.filter(l => l.src !== 'BSD');   // 油⇒6kg 板油切小塊 = its own line (for Jinjang, from BSD's pork-lard stock)
+    const a = norm.map(l => it(l, l.jj, true)).join(' '), b = bsI.map(l => it(l, l.qty)).join(' ');
+    const out = own.map(l => `${l.word}⇒${nf(l.jj)}${un(l)}${l.note ? ' ' + l.note : ''}`);
+    if (a) out.push('旧⇒' + a); else if (b && !(cap && off) && s.lines.some(l => l.deliv !== 'BSD' && l.src !== 'BSD')) out.push('旧⇒暂停');   // Jinjang needs nothing but BSD orders
     if (cap && off) out.push('新⇒休息'); else if (b) out.push('新⇒' + (same ? '照旧' : b));
     return out.join('\n');
   }
@@ -884,9 +890,9 @@ function card(s, si){
           + (s.beforeOff && l.parOff && l.deliv !== 'JJ' ? ` · <b>${esc(T('fillOff', l.parOff, u))}</b>` : l.deliv !== 'JJ' && ruleTxt(l, u) ? ' · ' + esc(ruleTxt(l, u)) : l.deliv === 'BSD' && l.target ? ` · ${T('par')} ${esc(l.target)}` : '')
           + (l.onHand === '' ? '' : ' · ' + (l.countedToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${esc(T('notToday', l.when ? l.when.slice(8,10)+'/'+l.when.slice(5,7) : ''))}</span>`));
         const ju = uBoth(l.jjUom || l.uom), jlv = { lv: l.jjLv || {} }, jjInfo = l.deliv === 'BSD' ? '' : !l.jjIn ? `<span style="color:var(--red)">${T('jjNotList')}</span>`
-          : `${T('jjHas')}: <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}` + (ruleTxt(jlv, ju) ? ' · ' + esc(ruleTxt(jlv, ju)) : ` · <span style="color:var(--red)">${T('jjNoLv')}</span>`)
+          : `${l.src === 'BSD' ? 'BSD ' + T('stockTab') : T('jjHas')}: <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}${l.jjRecent ? ` · <span class="ok">${T('ordOn', l.jjRecent)}</span>` : ''}` + (ruleTxt(jlv, ju) ? ' · ' + esc(ruleTxt(jlv, ju)) : ` · <span style="color:var(--red)">${T('jjNoLv')}</span>`)
             + ' · ' + (l.jjToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${T('jjNotToday')}</span>`)
-            + (isBoss() ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
+            + (isBoss() && l.src !== 'BSD' ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
         const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl') + (l.oUnit ? ' · ' + l.oUnit : ''), f === 'jj' ? l.jj : l.qty, '–');
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
@@ -1392,14 +1398,14 @@ async function exportSt(ym){
 // Supplier orders sent from the Order tab show here as cards; tick when the vendor's goods arrive.
 // BSD's received part goes onto the Jinjang statement (Jinjang pays the vendors, BSD pays Jinjang back).
 Object.assign(TXT.en, { vrTitle:'Vendor deliveries', vrTo:s=>s==='BSD'?'to BSD':'to Jinjang', vrOrdered:t=>`ordered ${t}`, vrUnpl:'not ordered in app',
-  vrHint:'Less came? Change the number first.', vrAsked:'ordered', vrAll:'Received ✓', vrOk:s=>s==='BSD'?'✓ Vendor delivered to BSD':'✓ Vendor delivered to Jinjang',
-  vrNo:s=>s==='BSD'?'🔁 Went to Jinjang / didn\'t come':'🔁 Didn\'t come', vrZero:'🔁 nothing came from the vendor', vrDone:t=>`✓ received ${t}`,
+  vrHint:'Less came? Change the number first.', vrAsked:'ordered', vrAll:'Received ✓', vrOk:s=>'✓ Received',
+  vrNo:s=>'✗ Not received', vrZero:'✗ not received', vrDone:t=>`✓ received ${t}`,
   vrNot:n=>`⚠ ${n} vendor order${n>1?'s':''} not confirmed`, vrAdd:'+ Vendor delivery', vrAddT:'Vendor delivery (not ordered in app)', vrPick:'Which vendor?',
   vrWhere:'Delivered to', vrSaved:'Received ✓', vrNone:'Type at least one amount', dVB:'Vendor → BSD', dCB:'Cash buy (paid by Jinjang)', stVB:'Vendor / cash buys → BSD (paid by Jinjang)',
   vbTitle:n=>`${n} – prices`, vbNote:'Price per vendor unit. A changed price is kept for next time.', vbSaved:'Price saved ✓' });
 Object.assign(TXT.zh, { vrTitle:'供应商送货', vrTo:s=>s==='BSD'?'送 BSD':'送增江', vrOrdered:t=>`${t} 订`, vrUnpl:'没在 app 订',
-  vrHint:'到的比较少？先改数量。', vrAsked:'订了', vrAll:'已收到 ✓', vrOk:s=>s==='BSD'?'✓ 供应商送到 BSD':'✓ 供应商送到增江',
-  vrNo:s=>s==='BSD'?'🔁 送去增江 / 没来':'🔁 没来', vrZero:'🔁 供应商没送来', vrDone:t=>`✓ ${t} 已收`,
+  vrHint:'到的比较少？先改数量。', vrAsked:'订了', vrAll:'已收到 ✓', vrOk:s=>'✓ 已收到',
+  vrNo:s=>'✗ 没收到', vrZero:'✗ 没收到', vrDone:t=>`✓ ${t} 已收`,
   vrNot:n=>`⚠ ${n} 张供应商订单还没确认收货`, vrAdd:'+ 供应商送货', vrAddT:'供应商送货（没在 app 订）', vrPick:'哪个供应商？',
   vrWhere:'送到', vrSaved:'已收到 ✓', vrNone:'请至少填一个数量', dVB:'供应商 → BSD', dCB:'现金买（增江付）', stVB:'供应商 / 现金买 → BSD（增江付）',
   vbTitle:n=>`${n} – 价钱`, vbNote:'价钱按供应商的单位。改了的价钱下次会照用。', vbSaved:'价钱已保存 ✓' });
@@ -1558,7 +1564,8 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v104';
+const APP_V = 'v106';
+Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
 async function manualRefresh(btn){
@@ -1874,8 +1881,8 @@ function renderDlog(){
   else if (z.error) body = `<div class="empty">${esc(z.error)}</div>`;
   else { const by = {}; (z.rows || []).forEach(r => { const g = r.grp || r.who || ''; (by[g] = by[g] || []).push(r); });
     body = Object.keys(by).sort().map(g => `<div class="group">${esc(areaName(g))} · ${by[g].length}</div><div class="list">${by[g].map(r =>
-      `<div class="row ${r.carry?'todo':''}"><div class="info"><div class="name">${lineName(r)}</div><div class="meta">${r.carry ? `<span style="color:var(--red)">${T('dlCarry', r.carry.slice(8,10)+'/'+r.carry.slice(5,7))}</span>` : `${esc(r.t)} · ${esc(areaName(r.who))}${r.n > 1 ? ' · ' + T('dlTimes', r.n) : ''}`}</div></div>
-        <div class="bigq" ${r.carry?'style="opacity:.5"':''}>${esc(r.qty)}<small>${esc(uName(r.unit))}</small></div></div>`).join('')}</div>`).join('') || `<div class="empty">${T('dlogNone')}</div>`; }
+      `<div class="row"><div class="info"><div class="name">${lineName(r)}</div><div class="meta">${r.carry ? esc(r.carry.slice(8,10)+'/'+r.carry.slice(5,7)) : esc(r.t)} · ${esc(areaName(r.who))}</div></div>
+        <div class="bigq">${esc(r.qty)}<small>${esc(uName(r.unit))}</small></div></div>`).join('')}</div>`).join('')   /* v105 (Zayne): simply the last saved number of every item */ || `<div class="empty">${T('dlogNone')}</div>`; }
   $('#app').innerHTML = `<header><h1>${T('dlogT')}</h1><button class="hmenu hx" onclick="closeUsage()" aria-label="Close">✕</button></header>${chips}${body}<div class="spacer"></div>`;
 }
 let UZ = null, UDAYS = 7;
