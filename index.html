@@ -1595,6 +1595,135 @@ function shipOk(list, go){
       <button class="btn clear" style="flex:1" onclick="shipEdit()">${zh ? '✏️ 修改' : '✏️ Edit'}</button></div></div>`;
   m.style.display = 'flex'; return false;
 }
+// ================= v110: Wastage 报废 (Kitchen + Owner) =================
+// Kitchen: ☰ → 🗑 报废 opens the form at once. Owner: ☰ → 🗑 报废 opens the month list (+ record).
+const WS_REASONS = [['做错','Cooked wrong'],['风干','Dried out'],['掉了','Dropped'],['客人取消','Customer cancelled'],['坏了','Spoiled'],['其他','Other']];
+let WM = null, WS = null, WL = null;
+const wsZh = () => LANG === 'zh';
+const wsBoss = () => { const r = curUser().role; return r === 'Owner' || r === 'Viewer'; };
+function wsBox(){ let m = document.getElementById('wsv');
+  if (!m) { m = document.createElement('div'); m.id = 'wsv'; m.style.cssText = 'position:fixed;inset:0;z-index:60;background:var(--bg);overflow:auto;-webkit-overflow-scrolling:touch'; document.body.appendChild(m); }
+  m.style.display = 'block'; return m; }
+function wsClose(){ const m = document.getElementById('wsv'); if (m) { m.style.display = 'none'; m.innerHTML = ''; } WS = null; WL = null; }
+function wsHead(t){ return `<div style="position:sticky;top:0;z-index:2;background:var(--card);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px">
+  <h1 style="flex:1;margin:0;font-size:19px">🗑 ${t}</h1><button onclick="wsClose()" aria-label="Close" style="width:44px;height:44px;border-radius:50%;border:2px solid var(--ink);background:#fff;font-size:24px;line-height:1;font-weight:700">✕</button></div>`; }
+function wsAmt(uom, q){ uom = String(uom).toUpperCase(); if (uom === 'KG') return Math.round(q * 10000) / 10 + ' g'; if (uom === 'LTR') return Math.round(q * 1000) + ' ml'; if (uom === 'ML') return Math.round(q) + ' ml'; return (Math.round(q * 1000) / 1000) + (wsZh() ? ' 个' : ' pcs'); }
+function wsUnitIn(uom){ uom = String(uom).toUpperCase(); return uom === 'KG' ? 'g' : (uom === 'LTR' || uom === 'ML') ? 'ml' : (wsZh() ? '个' : 'pcs'); }
+function wsItem(n){ return (WM && WM.items.find(x => x.item === n)) || { item: n, zh: '', uom: '', price: 0 }; }
+function wsName(n){ const x = wsItem(n); return wsZh() && x.zh ? `${esc(x.zh)} <span class="sub">${esc(n)}</span>` : `${esc(n)}${x.zh ? ` <span class="sub">${esc(x.zh)}</span>` : ''}`; }
+async function wsOpen(){
+  closeSum();
+  if (wsBoss()) return wsList(0);
+  wsForm();
+}
+async function wsMenu(){ if (WM) return WM; WM = await call('getWasteMenu', PIN); return WM; }
+async function wsForm(){
+  const m = wsBox(); m.innerHTML = wsHead(wsZh() ? '报废 Wastage' : 'Wastage 报废') + `<div class="empty">${T('loading')}</div>`;
+  try { await wsMenu(); } catch(e){ m.innerHTML = wsHead('报废') + `<div class="empty">${esc(String(e.message||e))}</div>`; return; }
+  WS = { at: WM.now, code: '', open: {}, noodle: {}, noodleOn: false, extra: false, parts: [], single: null, reason: '', note: '', photo: '', key: '' };
+  wsDraw();
+}
+function wsDish(code){ return WM.dishes.find(d => d.code === code); }
+function wsChoices(d){ return d && d.group ? (WM.noodles[d.group] || []) : []; }
+function wsNoodleOf(d){ const ch = wsChoices(d); return WS.noodle[d.code] || (ch[0] && ch[0].choice) || ''; }
+function wsHasPan(d){ const ch = wsChoices(d).find(c => c.choice === wsNoodleOf(d)); return !!(ch && ch.parts.some(p => p.item === 'Pan Mee')); }
+// all the tick boxes of one dish (noodle first)
+function wsKeys(d){ const k = []; if (wsChoices(d).length) { k.push('#noodle'); if (wsHasPan(d)) k.push('#extra'); } d.lines.forEach(l => k.push(l.item)); return k; }
+function wsOn(d, k){ if (WS.code !== d.code) return false; return k === '#noodle' ? WS.noodleOn : k === '#extra' ? WS.extra : WS.parts.indexOf(k) >= 0; }
+function wsSet(d, k, v){ if (k === '#noodle') WS.noodleOn = v; else if (k === '#extra') WS.extra = v; else { WS.parts = WS.parts.filter(x => x !== k); if (v) WS.parts.push(k); } }
+function wsPick(code){ if (WS.code !== code) { WS.code = code; WS.parts = []; WS.noodleOn = false; WS.extra = false; WS.single = null; } }
+function wsTickDish(code){ const d = wsDish(code); const all = WS.code === code && wsKeys(d).every(k => wsOn(d, k));
+  wsPick(code); wsKeys(d).forEach(k => wsSet(d, k, !all)); if (all) WS.code = ''; WS.open[code] = true; wsDraw(); }
+function wsTick(code, k){ const d = wsDish(code); wsPick(code); wsSet(d, k, !wsOn(d, k)); if (!wsKeys(d).some(x => wsOn(d, x))) WS.code = ''; wsDraw(); }
+function wsToggle(code){ WS.open[code] = !WS.open[code]; wsDraw(); }
+function wsNoodle(code, v){ const d = wsDish(code); WS.noodle[code] = v; if (!wsHasPan(d) && WS.code === code) WS.extra = false; wsDraw(); }
+function wsSingle(item){ WS.code = ''; WS.parts = []; WS.noodleOn = false; WS.extra = false; WS.single = WS.single && WS.single.item === item ? null : { item, qty: '' }; wsDraw();
+  if (WS.single) setTimeout(() => { const i = document.getElementById('ws_q'); if (i) i.focus(); }, 50); }
+function wsCost(){ if (!wsBoss()) return null; let c = 0; const pr = n => Number(wsItem(n).price) || 0;
+  if (WS.single) { const x = wsItem(WS.single.item), q = Number(WS.single.qty) || 0, u = String(x.uom).toUpperCase(); return pr(x.item) * (u === 'KG' || u === 'LTR' ? q / 1000 : q); }
+  const d = wsDish(WS.code); if (!d) return 0;
+  if (WS.noodleOn) { const ch = wsChoices(d).find(c => c.choice === wsNoodleOf(d)); if (ch) ch.parts.forEach(p => c += pr(p.item) * p.qty); }
+  if (WS.extra) c += pr('Pan Mee') * 0.09;
+  d.lines.forEach(l => { if (WS.parts.indexOf(l.item) >= 0) c += pr(l.item) * l.qty; }); return c; }
+function wsCount(){ if (WS.single) return Number(WS.single.qty) > 0 ? 1 : 0; const d = wsDish(WS.code); return d ? wsKeys(d).filter(k => wsOn(d, k)).length : 0; }
+const wsCb = on => `<span style="flex:none;width:26px;height:26px;border-radius:7px;border:2px solid ${on ? 'var(--brand)' : '#b9b4aa'};background:${on ? 'var(--brand)' : '#fff'};color:#fff;display:inline-flex;align-items:center;justify-content:center;font-weight:800;font-size:17px">${on ? '✓' : ''}</span>`;
+function wsDraw(){
+  const m = wsBox(), zh = wsZh(), sy = m.scrollTop;
+  const cats = []; WM.dishes.forEach(d => { if (cats.indexOf(d.cat) < 0) cats.push(d.cat); });
+  const row = 'display:flex;align-items:center;gap:12px;padding:11px 14px;border-bottom:1px solid var(--line);background:var(--card)';
+  const dishHtml = d => {
+    const keys = wsKeys(d), n = keys.filter(k => wsOn(d, k)).length, all = n > 0 && n === keys.length, open = !!WS.open[d.code];
+    let h = `<div style="${row}"><span onclick="wsTickDish('${d.code}')">${wsCb(all)}</span>
+      <div onclick="wsToggle('${d.code}')" style="flex:1;min-width:0"><div style="font-weight:600">${esc(d.name)}</div>${n && !all ? `<div class="sub" style="color:var(--brand)">${zh ? '已勾' : 'ticked'} ${n}/${keys.length}</div>` : ''}</div>
+      <span onclick="wsToggle('${d.code}')" class="sub" style="font-size:20px;padding:0 4px">${open ? '▾' : '▸'}</span></div>`;
+    if (!open) return h;
+    const sub = 'display:flex;align-items:center;gap:12px;padding:9px 14px 9px 52px;border-bottom:1px solid var(--line);background:#fbfaf7';
+    if (wsChoices(d).length) {
+      h += `<div style="${sub}"><span onclick="wsTick('${d.code}','#noodle')">${wsCb(wsOn(d, '#noodle'))}</span><div style="flex:1;min-width:0"><div class="sub">${zh ? '面' : 'Noodle'}</div>
+        <select onchange="wsNoodle('${d.code}',this.value)" style="width:100%;font-size:16px;padding:6px;border:1px solid var(--line);border-radius:8px;background:#fff">${wsChoices(d).map(c => `<option ${c.choice === wsNoodleOf(d) ? 'selected' : ''}>${esc(c.choice)}</option>`).join('')}</select></div></div>`;
+      if (wsHasPan(d)) h += `<div style="${sub}" onclick="wsTick('${d.code}','#extra')">${wsCb(wsOn(d, '#extra'))}<div style="flex:1">${zh ? '加面（大）' : 'Add noodle (Large)'} <span class="sub">+90 g</span></div></div>`;
+    }
+    d.lines.forEach(l => { const k = l.item.replace(/'/g, "\\'"), it = wsItem(l.item);
+      h += `<div style="${sub}" onclick="wsTick('${d.code}','${esc(k)}')">${wsCb(wsOn(d, l.item))}<div style="flex:1;min-width:0">${wsName(l.item)}</div><span class="sub" style="white-space:nowrap">${wsAmt(it.uom, l.qty)}</span></div>`; });
+    return h; };
+  const ings = WM.items.filter(x => x.item !== 'Water').sort((a, b) => (b.noodle ? 1 : 0) - (a.noodle ? 1 : 0) || String(zh && a.zh ? a.zh : a.item).localeCompare(String(zh && b.zh ? b.zh : b.item)));
+  const ingOpen = !!WS.open['#ing'];
+  const ingHtml = `<div class="group" style="cursor:pointer" onclick="wsToggle('#ing')">${ingOpen ? '▾' : '▸'} ${zh ? '单样原料（例：风干的板面）' : 'Single ingredient (e.g. dried-out pan mee)'}</div>` + (ingOpen ? ings.map(x => {
+    const on = WS.single && WS.single.item === x.item;
+    return `<div style="${row}" onclick="wsSingle('${esc(x.item.replace(/'/g, "\\'"))}')">${wsCb(on)}<div style="flex:1;min-width:0">${wsName(x.item)}</div></div>` + (on ? `<div style="${row};background:#fbfaf7;padding-left:52px">
+      <span>${zh ? '数量' : 'Amount'}</span><input id="ws_q" inputmode="decimal" value="${esc(WS.single.qty)}" onclick="event.stopPropagation()" oninput="WS.single.qty=this.value.trim();wsFoot()" style="width:110px;font-size:18px;padding:7px;border:1px solid var(--line);border-radius:8px;text-align:right"><b>${wsUnitIn(x.uom)}</b></div>` : ''); }).join('') : '');
+  m.innerHTML = wsHead(zh ? '报废 Wastage' : 'Wastage 报废') +
+    `<div style="padding:12px 14px 4px"><div class="sub">${zh ? '日期 / 时间' : 'Date / time'}</div>
+      <input type="datetime-local" value="${esc(WS.at)}" onchange="WS.at=this.value" style="font-size:17px;padding:8px;border:1px solid var(--line);border-radius:10px;background:#fff;width:100%"></div>
+    <div class="group">${zh ? '选产品 – 点名字展开，勾选报废的部分' : 'Select product – tap the name to open, tick what was wasted'}</div>` +
+    cats.map(c => `<div class="lgh">${esc(c)}</div>` + WM.dishes.filter(d => d.cat === c).map(dishHtml).join('')).join('') + ingHtml +
+    `<div class="group">${zh ? '原因' : 'Reason'}</div><div style="padding:4px 14px;display:flex;flex-wrap:wrap;gap:8px">${WS_REASONS.map(r => `<button class="chip ${WS.reason === r[0] ? 'on' : ''}" style="font-size:16px;padding:8px 14px" onclick="WS.reason='${r[0]}';wsDraw()">${zh ? r[0] : r[1] + ' ' + r[0]}</button>`).join('')}</div>
+    <div style="padding:8px 14px"><input value="${esc(WS.note)}" oninput="WS.note=this.value" placeholder="${zh ? '备注（可不填）' : 'Note (optional)'}" style="width:100%;font-size:16px;padding:9px;border:1px solid var(--line);border-radius:10px"></div>
+    <div style="padding:4px 14px 8px"><label class="btn ${WS.photo ? 'ghost' : 'clear'}" style="display:block;text-align:center">${WS.photo ? (zh ? '📷 已拍照 ✓（点击重拍）' : '📷 Photo added ✓ (tap to retake)') : (zh ? '📷 拍照（必须）' : '📷 Take photo (required)')}<input type="file" accept="image/*" capture="environment" style="display:none" onchange="wsPhoto(this)"></label>
+      ${WS.photo ? `<img src="${WS.photo}" style="display:block;max-width:100%;max-height:200px;margin:8px auto 0;border-radius:10px">` : ''}</div>
+    <div style="height:90px"></div>
+    <div style="position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:10px 14px;display:flex;align-items:center;gap:10px">
+      <div id="ws_ft" style="flex:1;font-size:15px"></div><button class="btn save" id="ws_save" style="min-width:130px" onclick="wsSave()">${zh ? '保存' : 'Save'}</button></div>`;
+  m.scrollTop = sy; wsFoot();
+}
+function wsFoot(){ const el = document.getElementById('ws_ft'); if (!el || !WS) return; const n = wsCount(), c = wsCost(), zh = wsZh();
+  const d = wsDish(WS.code), what = WS.single ? wsItem(WS.single.item) : null;
+  el.innerHTML = (d ? `<b>${esc(d.name.split(' ')[0])}</b> · ` : what ? `<b>${esc(zh && what.zh ? what.zh : what.item)}</b> · ` : '') + (zh ? `已选 ${n}` : `${n} ticked`) + (c !== null && n ? ` · <b>RM ${c.toFixed(2)}</b>` : ''); }
+function wsPhoto(inp){ const f = inp.files && inp.files[0]; if (!f) return; const rd = new FileReader();
+  rd.onload = () => { const im = new Image(); im.onload = () => { const sc = Math.min(1, 1280 / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+    cv.width = Math.round(im.width * sc); cv.height = Math.round(im.height * sc); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+    WS.photo = cv.toDataURL('image/jpeg', 0.75); wsDraw(); }; im.src = rd.result; }; rd.readAsDataURL(f); }
+async function wsSave(){
+  const zh = wsZh();
+  if (!WS.code && !WS.single) return toast(zh ? '请选产品，勾选报废的部分' : 'Pick a product and tick what was wasted');
+  if (WS.single && !(Number(WS.single.qty) > 0)) return toast(zh ? '请填数量' : 'Type the amount');
+  if (!wsCount()) return toast(zh ? '请勾选报废的部分' : 'Tick what was wasted');
+  if (!WS.reason) return toast(zh ? '请选原因' : 'Pick a reason');
+  if (!WS.photo) return toast(zh ? '请先拍照' : 'Take a photo first');
+  const d = wsDish(WS.code);
+  const rec = { key: WS.key || (WS.key = Date.now().toString(36) + Math.random().toString(36).slice(2, 7)), at: WS.at, reason: WS.reason, note: WS.note.trim(), photo: WS.photo };
+  if (WS.single) rec.single = { item: WS.single.item, qty: Number(WS.single.qty) };
+  else { rec.code = d.code; rec.noodle = wsChoices(d).length ? wsNoodleOf(d) : ''; rec.noodleOn = WS.noodleOn; rec.extra = WS.extra; rec.parts = WS.parts.slice(); }
+  const b = document.getElementById('ws_save'); b.disabled = true; b.textContent = T('saving');
+  try { await call('saveWaste', PIN, rec); toast(zh ? '已保存 ✓' : 'Saved ✓'); if (wsBoss()) wsList(WL ? WL.back : 0); else wsClose(); }
+  catch(e){ b.disabled = false; b.textContent = zh ? '保存' : 'Save'; toast(T('notSaved') + ' ' + String(e.message || e)); }
+}
+// Owner: month list – total, by reason, by dish, every record with photo
+async function wsList(back){
+  const m = wsBox(), zh = wsZh(); WS = null; WL = { back }; m.innerHTML = wsHead(zh ? '报废记录' : 'Wastage records') + `<div class="empty">${T('loading')}</div>`;
+  let r; try { r = await call('getWaste', PIN, ymOf(back)); } catch(e){ m.innerHTML = wsHead('报废') + `<div class="empty">${esc(String(e.message||e))}</div>`; return; }
+  if (!WL) return;
+  const sr = (a) => a.map(x => `<div class="srow"><span>${esc(x.k)} <span class="sub">× ${x.n}</span></span><b>RM ${x.rm.toFixed(2)}</b></div>`).join('');
+  m.innerHTML = wsHead(zh ? '报废记录' : 'Wastage records') +
+    `<div class="dbtns"><button class="chip ${back===0?'on':''}" onclick="wsList(0)">${T('thisMonth')}</button><button class="chip ${back===1?'on':''}" onclick="wsList(1)">${T('lastMonth')}</button>${curUser().role === 'Owner' ? `<button class="btn save" onclick="wsForm()">+ ${zh ? '记录报废' : 'Record'}</button>` : ''}</div>
+    <div class="srow tot" style="margin:6px 14px"><span>${esc(r.ym)} · ${r.list.length} ${zh ? '次' : 'records'}</span><b>RM ${(r.total || 0).toFixed(2)}</b></div>` +
+    (r.list.length ? `<div class="group">${zh ? '按原因' : 'By reason'}</div><div style="padding:0 14px">${sr(r.byReason)}</div><div class="group">${zh ? '按产品' : 'By product'}</div><div style="padding:0 14px">${sr(r.byDish)}</div>
+    <div class="group">${zh ? '全部记录' : 'All records'}</div><div class="list">${r.list.map(o => `<div class="row"><div class="info"><div class="name">${esc(o.dish)}${o.noodle ? ` <span class="sub">${esc(o.noodle)}</span>` : ''}</div>
+      <div class="meta">${esc(o.when)} · ${esc(areaName(o.who))} · <b>${esc(o.reason)}</b>${o.note ? ' · ' + esc(o.note) : ''}</div><div class="meta">${esc(o.wasted)}</div>
+      ${o.photo ? `<div class="meta"><a href="${esc(o.photo)}" target="_blank">📷 ${zh ? '看照片' : 'Photo'}</a></div>` : ''}</div><div class="bigq">${o.cost !== undefined ? o.cost.toFixed(2) : ''}<small>RM</small></div></div>`).join('')}</div>`
+    : `<div class="empty">${zh ? '这个月还没有报废记录' : 'No wastage this month'}</div>`) + `<div class="spacer"></div>`;
+}
+
 function shipClose(){ const m = document.getElementById('ship'); if (m) m.style.display = 'none'; }
 function shipEdit(){ shipClose(); SHIP_OK = ''; const i = document.querySelector('#app .qty'); if (i) { i.scrollIntoView({ block:'center' }); i.focus(); } }
 // Owner: statement → tap a "Vendor → BSD" entry → fix prices
@@ -1617,7 +1746,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v109';
+const APP_V = 'v110';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
@@ -1897,6 +2026,7 @@ function openMenu(){ prefetchReports();
     (boss ? `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openUsage('dlog')"><span>📋 ${T('dlogT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>` : '') +
+    (boss || u.area === 'Kitchen' ? `<div class="srow pick" onclick="wsOpen()"><span>🗑 ${LANG === 'zh' ? '报废' : 'Wastage'}</span><b class="sub">›</b></div>` : '') +
     (sw ? `<div class="srow pick" onclick="closeSum();backOwner()"><span>← ${T('ownerShort')}</span><b class="sub">›</b></div>`
         : `<div class="srow pick" onclick="closeSum();logout()" style="color:var(--red)"><span class="mic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> ${T('logout')}</span><b class="sub">›</b></div>`);
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
