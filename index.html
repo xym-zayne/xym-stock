@@ -1113,7 +1113,7 @@ async function submitNew(){
   if (!send.length) { toast(T('addSome')); return; }
   if (DVIEW.mode === 'send' || DVIEW.mode === 'jjsend') { const miss = DLINES.find(l => l.wt && Number(l.qty) > 0 && !(Number(l.kg) > 0)); if (miss) { toast(T('needKg', itemName(miss))); return; } }
   if (!kgSane(DLINES.map(l => ({ name: itemName(l), qty: l.qty, kg: l.kg, unit: l.unit })), submitNew)) return;
-  if (DVIEW.mode === 'jjsend' && !shipOk(DLINES.map(l => ({ name: itemName(l), qty: l.qty, kg: l.wt ? l.kg : '', unit: l.unit })), submitNew)) return;
+  if ((DVIEW.mode === 'jjsend' || DVIEW.mode === 'send') && !shipOk(DLINES.map(l => ({ name: itemName(l), qty: l.qty, kg: l.wt ? l.kg : '', unit: l.unit })), submitNew)) return;
   // shows at once (number guessed = next number); the server saves in the background
   const mode = DVIEW.mode, note = DNOTE.trim(), keep = DLINES, u = curUser();
   // Noodle day (Friday): noodles in BSD's request become BSD's own self order (vendor drops at BSD, Jinjang pays) – Jinjang does not see it
@@ -1126,7 +1126,7 @@ async function submitNew(){
       lines: lines.map((x, k) => { const L = DLINES.find(l => l.id === x.id) || {};
         return { line: id + '-' + (k + 1), id: x.id, name: L.name, zh: L.zh, unit: L.unit, wt: L.wt, req: md === 'self' ? x.qty : sent || x.decide ? '' : x.qty, sent: sent ? x.qty : '', recv: '', added: false,
           sentKg: sent && L.wt ? x.kg : '', recvKg: '', decide: !!x.decide }; }) };
-    if (md === 'jjsend') { o.status = 'Received'; o.auto = true; o.receivedAt = now; o.lines.forEach(l => { l.recv = l.sent; l.recvKg = l.sentKg; }); }   // v108: sent = received
+    if (md === 'jjsend' || md === 'send') { o.status = 'Received'; o.auto = true; o.receivedAt = now; o.lines.forEach(l => { l.recv = l.sent; l.recvKg = l.sentKg; }); }   // v108: sent = received
     DV.list.unshift(o); remember('deliv', DV);
     bgAct('createDelivery', [md, lines, note], { lid: id, view: [o] },
       e => { DV.list = DV.list.filter(x => x !== o); remember('deliv', DV); closeSum(); DLINES = keep; DNOTE = note; DVIEW = { kind:'new', mode }; if (MODE === 'deliv') renderNew(); toast(T('notSaved') + ' ' + String(e.message||e)); });
@@ -1290,7 +1290,7 @@ function doLines(o, recv, retry){
 const FOLLOW = {};   // DO id → follow-up DO id made when Jinjang sent short
 async function doAct(fn, recv, okMsg, later){
   const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, recv, () => doAct(fn, recv, okMsg, later)); if (!lines) return;
-  if (fn === 'sendDelivery' && o.dir === 'JB' && !o.self && !shipOk(shipList(o, lines), () => doAct(fn, recv, okMsg, later))) return;
+  if (fn === 'sendDelivery' && !o.self && !shipOk(shipList(o, lines), () => doAct(fn, recv, okMsg, later))) return;
   later = false;   // no follow-up order when Jinjang is short (Zayne 30 Oct: too many DOs) – the Stock / Daily screens show "ordered dd/mm · Jinjang no stock" instead
   if (false) {
     const sh = o.lines.filter(l => Number(l.req) > 0).map(l => { const x = lines.find(y => y.line === l.line), q = x ? x.qty : 0;
@@ -1307,7 +1307,7 @@ async function doAct(fn, recv, okMsg, later){
     if (recv) { l.recv = x.qty; if (l.wt) l.recvKg = x.kg; } else { l.sent = x.qty; if (l.wt) l.sentKg = x.kg; } });
   extra.forEach((x, k) => o.lines.push({ line: o.id + '-' + (o.lines.length + 1), id: x.id, name: x.name, zh: x.zh, unit: x.unit, wt: x.wt, req: '', sent: Number(x.qty) || 0, recv: '', added: true, sentKg: x.wt ? x.kg : '', recvKg: '', decide: false }));
   o.status = recv ? 'Received' : 'Sent'; if (recv) o.receivedAt = now; else o.sentAt = now; o.pending = true;
-  if (!recv && o.dir === 'JB' && !o.self) { o.status = 'Received'; o.auto = true; o.receivedAt = now; o.lines.forEach(l => { l.recv = l.sent; l.recvKg = l.sentKg; }); }   // v108: sent = received
+  if (!recv && !o.self) { o.status = 'Received'; o.auto = true; o.receivedAt = now; o.lines.forEach(l => { l.recv = l.sent; l.recvKg = l.sentKg; }); }   // v108: sent = received
   let fo = null;
   if (!recv && later && o.dir === 'JB') {   // what was short goes into a follow-up order
     const sh = o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req));
@@ -1327,7 +1327,7 @@ function doSend(){ doAct('sendDelivery', false, 'sentOk'); }
 // Sender fixes a sent DO (missed item / wrong number) – same DO number, the other side is told again
 function doEdit(){
   const o = DV.list.find(x => x.id === DVIEW.id), lines = doLines(o, true, doEdit); if (!lines) return;
-  if (o.dir === 'JB' && !o.self && !shipOk(shipList(o, lines), doEdit)) return;
+  if (!o.self && !shipOk(shipList(o, lines), doEdit)) return;
   const snap = JSON.stringify(o), now = hhmm(), extra = DVIEW.extra;
   lines.forEach(x => { const l = x.line && o.lines.find(y => y.line === x.line); if (!l) return; l.sent = x.qty; if (l.wt) l.sentKg = x.kg; if (o.auto) { l.recv = x.qty; if (l.wt) l.recvKg = x.kg; } });
   extra.forEach(x => o.lines.push({ line: o.id + '-' + (o.lines.length + 1), id: x.id, name: x.name, zh: x.zh, unit: x.unit, wt: x.wt, req: '', sent: Number(x.qty) || 0, recv: o.auto ? Number(x.qty) || 0 : '', added: true, sentKg: x.wt ? x.kg : '', recvKg: o.auto && x.wt ? x.kg : '', decide: false }));
@@ -1369,8 +1369,8 @@ function noticeText(o, kind, lang){
       const g = lineGrp(ls[k].id), h = many && g !== last ? `\n\n【${grpLabel(g, zh)}】` : ''; last = g; return h + '\n• ' + x; }).join(''); };   /* one item per line, under group headings */
   const shortL = kind === 'sent' || kind === 'upd' ? o.lines.filter(l => Number(l.req) > 0 && (Number(l.sent) || 0) < Number(l.req)) : [];   // asked but not (fully) sent – just listed, no new order
   const fl = (zh) => shortL.length ? (zh ? `\n\n❌ 没货：` : `\n\n❌ No stock:`) + shortL.map(l => '\n• ' + (zh ? (l.zh || l.name) : l.name) + ' ' + Math.round((Number(l.req) - (Number(l.sent) || 0)) * 1000) / 1000 + (zh ? '' : ' ') + (zh ? (UNIT_ZH[String(l.unit).toLowerCase()] || l.unit) : l.unit)).join('') : '';
-  const zh = `${{ new:'🛒 BSD 要货单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出', upd:'✏️ 已修改（请看新的清单）' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${(kind === 'sent' || kind === 'upd') && o.dir === 'JB' && !o.self ? T_ZH_JB : kind === 'sent' || kind === 'back' || kind === 'upd' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
-  const en = `${{ new:'🛒 BSD request', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent', upd:'✏️ Updated (new list below)' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${(kind === 'sent' || kind === 'upd') && o.dir === 'JB' && !o.self ? T_EN_JB : kind === 'sent' || kind === 'back' || kind === 'upd' ? 'Please confirm received in the app' : 'Please open it in the app, check the quantities and tap Mark as sent'}`;
+  const zh = `${{ new:'🛒 BSD 要货单', req:'🛒 增江要货', back:'↩️ BSD 送回', sent:'🚚 已发出', upd:'✏️ 已修改（请看新的清单）' }[kind]} ${o.id}${one(true)}${fl(true)}${o.note ? '\n\n备注：' + o.note : ''}\n\n${(kind === 'sent' || kind === 'upd' || kind === 'back') && !o.self ? T_ZH_JB : kind === 'sent' || kind === 'back' || kind === 'upd' ? '收到后请在 app 里确认收货' : '请在 app 里确认发货'}`;
+  const en = `${{ new:'🛒 BSD request', req:'🛒 Jinjang request', back:'↩️ BSD return', sent:'🚚 Sent', upd:'✏️ Updated (new list below)' }[kind]} ${o.id}${one(false)}${fl(false)}${o.note ? '\n\nNote: ' + o.note : ''}\n\n${(kind === 'sent' || kind === 'upd' || kind === 'back') && !o.self ? T_EN_JB : kind === 'sent' || kind === 'back' || kind === 'upd' ? 'Please confirm received in the app' : 'Please open it in the app, check the quantities and tap Mark as sent'}`;
   return lang === 'en' ? en : lang === 'both' ? zh + '\n\n' + en : zh;
 }
 const T_ZH_JB = '发出就算收到，不用再按收货', T_EN_JB = 'Counts as received – no need to tap Received';
@@ -1746,7 +1746,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v110';
+const APP_V = 'v112';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
@@ -2026,7 +2026,7 @@ function openMenu(){ prefetchReports();
     (boss ? `<div class="srow pick" onclick="openUsage()"><span>📊 ${T('usageT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openUsage('dlog')"><span>📋 ${T('dlogT')}</span><b class="sub">›</b></div>
     <div class="srow pick" onclick="openStatement(0)"><span>🧾 ${T('statement')}</span><b class="sub">›</b></div>` : '') +
-    (boss || u.area === 'Kitchen' ? `<div class="srow pick" onclick="wsOpen()"><span>🗑 ${LANG === 'zh' ? '报废' : 'Wastage'}</span><b class="sub">›</b></div>` : '') +
+    (u.role === 'Owner' ? `<div class="srow pick" onclick="wsOpen()"><span>🗑 ${LANG === 'zh' ? '报废' : 'Wastage'}</span><b class="sub">›</b></div>` : '') +
     (sw ? `<div class="srow pick" onclick="closeSum();backOwner()"><span>← ${T('ownerShort')}</span><b class="sub">›</b></div>`
         : `<div class="srow pick" onclick="closeSum();logout()" style="color:var(--red)"><span class="mic"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="M16 17l5-5-5-5"/><path d="M21 12H9"/></svg> ${T('logout')}</span><b class="sub">›</b></div>`);
   $('#sBtns').innerHTML = `<button class="btn clear" onclick="closeSum()">${T('close')}</button>`;
