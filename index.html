@@ -170,8 +170,8 @@
 .lgh{padding:10px 14px 4px;font-size:15px;font-weight:700;color:var(--brand);background:transparent}
 .robar{margin:6px 14px 0;padding:6px 10px;border-radius:8px;background:#eef3fb;color:#2b4c7e;font-size:15px;font-weight:600;text-align:center}
 body.ro footer, body.ro .use1, body.ro .dbtns .btn.save, body.ro .dbtns .btn.clear, body.ro .lvl, body.ro .bin { display:none !important; }
-body.ro .card .btn.save, body.ro .card .btn.ghost { display:none !important; }
-body.ro input.qty { pointer-events:none; background:transparent; border-color:transparent; }
+body.ro .card:not(.ordc) .btn.save, body.ro .card .btn.ghost { display:none !important; }
+body.ro input.qty:not(.ordq) { pointer-events:none; background:transparent; border-color:transparent; }
 .ver{font-size:10px;color:var(--muted);opacity:.7}
 .tab.menu{flex:none;min-width:44px}
 .otag{display:inline-block;margin-top:4px;padding:2px 8px;border-radius:8px;background:#e8f1fb;color:#1f5fa8;font-size:13px;font-weight:600}.otag.short{background:#fff3e0;color:#a35a00}
@@ -893,7 +893,7 @@ function card(s, si){
           : `${l.src === 'BSD' ? 'BSD ' + T('stockTab') : T('jjHas')}: <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}${l.jjRecent ? ` · <span class="ok">${T('ordOn', l.jjRecent)}</span>` : ''}` + (ruleTxt(jlv, ju) ? ' · ' + esc(ruleTxt(jlv, ju)) : ` · <span style="color:var(--red)">${T('jjNoLv')}</span>`)
             + ' · ' + (l.jjToday ? `<span class="ok">${T('countedToday')}</span>` : `<span style="color:var(--red)">${T('jjNotToday')}</span>`)
             + (isBoss() && l.src !== 'BSD' ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
-        const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl') + (l.oUnit ? ' · ' + l.oUnit : ''), f === 'jj' ? l.jj : l.qty, '–');
+        const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl') + (l.oUnit ? ' · ' + l.oUnit : ''), f === 'jj' ? l.jj : l.qty, '–').replace('class="qty sm"', 'class="qty sm ordq"');   // v114: View-only can order too
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
           <div class="meta">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${jjInfo ? '<br>' + jjInfo : ''}${bsdInfo ? '<br>' + bsdInfo : ''}</div></div>
@@ -901,7 +901,7 @@ function card(s, si){
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
     const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
     const manual = s.open && !s.active && !s.orderedToday;
-    return `<div class="card"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:15px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
+    return `<div class="card ordc"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:15px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
       ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
       <div class="actions">${s.wa ? `<button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>` : ''}
       ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa')}</a>${s.wa2 ? `<a class="btn wa ${dis?'dis':''}" href="${dis?'#':waLink(s, 2)}" target="_blank" onclick="recordOrder(${si})">${T('sendWa2')}</a>` : ''}`
@@ -1050,6 +1050,8 @@ function doRow(o, hot){
     <div class="meta">${stName(o.status, o)} · ${esc(t)} · ${T('items', n)} · ${T('by')} ${esc(areaName(o.createdBy))}${o.note?' · '+esc(o.note):''}</div></div><span class="sub">›</span></div>`;
 }
 // ---------- Quantity inputs: weighed items get a second box for the total kg ----------
+// v114: tapping a number box selects the whole number, so typing replaces it (phones put the cursor in front of the number)
+document.addEventListener('focusin', e => { const t = e.target; if (t && t.matches && t.matches('input.qty')) setTimeout(() => { try { t.select(); } catch(x){} }, 0); });
 function qtyBox(attr, unit, v, ph){ return `<label class="qin"><input class="qty sm" inputmode="decimal" ${attr} value="${esc(v)}" placeholder="${ph || '–'}"><span>${esc(unit)}</span></label>`; }
 function kgBox(attr, v){ return `<label class="qin"><input class="qty sm kg" inputmode="decimal" ${attr} value="${esc(v)}" placeholder="–"><span>kg</span></label>`; }
 function fmtQ(q, unit, kg){ return `${esc(q)} ${esc(unit)}${kg!=='' && kg!==undefined && kg!==null ? ` (${esc(kg)} kg)` : ''}`; }
@@ -1747,7 +1749,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v113';
+const APP_V = 'v114';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
