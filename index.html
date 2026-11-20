@@ -1026,7 +1026,8 @@ function renderDeliv(){
   const side = DV.side, L = DV.list;
   const sendL = L.filter(canSend), recvL = L.filter(canRecv);
   const waitL = L.filter(o => (o.status === 'Requested' || o.status === 'Sent') && !canSend(o) && !canRecv(o));
-  const yday = (() => { const d = new Date(DV.today + 'T12:00:00'); d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })();
+  const yday = (() => { const d = new Date((DV.today || '') + 'T12:00:00'); if (isNaN(d)) return '';   // v113: Bar has no DV.today – crashed the Deliveries tab
+    d.setDate(d.getDate() - 1); return d.toISOString().slice(0, 10); })();
   const probL = side === 'BAR' ? [] : L.filter(o => o.prob && !o.probOK && o.status === 'Received');   // v108: BSD reported – stays until the owner taps Checked
   const arrL = side === 'BSD' || side === 'OWNER' ? L.filter(o => o.auto && o.status === 'Received' && !o.prob && o.rday >= yday) : [];   // today + yesterday's Jinjang deliveries
   const doneL = L.filter(o => (o.status === 'Received' || o.status === 'Cancelled' || o.status === 'Done') && probL.indexOf(o) < 0 && arrL.indexOf(o) < 0);
@@ -1746,7 +1747,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v112';
+const APP_V = 'v113';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
