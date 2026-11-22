@@ -908,6 +908,7 @@ function card(s, si){
         // v115: short line = what each place has (red date = not counted today); the rules and links only after tapping ⓘ
         const sh = [];
         if (l.extra) sh.push((l.sets || []).filter(x => x.set !== 'Always' && OD.setOn && OD.setOn[x.set]).map(x => x.qty === '' || x.qty === null || x.qty === undefined ? (LANG === 'zh' ? x.zh : x.set) : T('setHint', LANG === 'zh' ? x.zh : x.set, x.qty, x.unit)).join(' · ') || T('xtraMeta'));
+        else if (l.deliv === 'BOTH' && !l.jjIn) {}   // v122: Jinjang half of a BOTH item that is not on the Jinjang count list → hidden (calamansi)
         else if (l.deliv !== 'BSD') sh.push(!l.jjIn ? `<span style="color:var(--red)">${T('jjNotList')}</span>`
           : `${l.src === 'BSD' ? 'BSD ' + T('stockTab') : T('jjLbl')} <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}${l.jjToday ? '' : ` <span class="old">(${dd(l.jjWhen)})</span>`}`);
         if (bsdInfo) sh.push(`BSD <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(u)}${l.onHand === '' || l.countedToday ? '' : ` <span class="old">(${dd(l.when)})</span>`}`);
@@ -917,7 +918,7 @@ function card(s, si){
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
           <div class="meta">${sh.join('<br>')} ${more}${l.more ? `<div class="mdet">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${jjInfo ? '<br>' + jjInfo : ''}${bsdInfo ? '<br>' + bsdInfo : ''}</div>` : ''}</div></div>
-        <div class="qins">${l.deliv !== 'BSD' ? box('jj') : ''}${l.deliv !== 'JJ' ? box('qty') : ''}</div></div>`; }).join('')
+        <div class="qins">${l.deliv !== 'BSD' && !(l.deliv === 'BOTH' && !l.jjIn) ? box('jj') : ''}${l.deliv !== 'JJ' ? box('qty') : ''}</div></div>`; }).join('')
       ;
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
     const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
@@ -1770,7 +1771,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v121';
+const APP_V = 'v122';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
