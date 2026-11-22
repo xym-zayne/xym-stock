@@ -256,7 +256,7 @@ const TXT = {
         order:'Order', orderTitle:'Supplier Order', bsdOff:'BSD off day tomorrow (新⇒休息)', jjHas:'Jinjang has', jjNotToday:'Jinjang not counted today', jjNotList:'not on the Jinjang count list', jjNoLv:'no Jinjang level yet', jjLvLink:'Jinjang levels', jjLvTitle:n=>`${n} – Jinjang levels`, jjLvNote:'Jinjang orders by itself from these levels and the Jinjang count.', lvOff:'Fill up to – day before the supplier is off', jjLbl:'Jinjang', bsdLbl:'BSD', toJJ:'To Jinjang', toBSD:'To BSD', toBoth:'To Jinjang + BSD', sendWa2:'WhatsApp (2nd no.)', delivery:d=>`For delivery tomorrow (${d})`, offTmr:(n,d)=>`${n} is off tomorrow (${d}) – no order today`,
         beforeOff:'Day before their off day – stock up to the higher par', fillOff:(n,u)=>`fill up to ${n} ${u} (before off day)`, onHand:'on hand', par:'par', notToday:d=>`⚠ not counted today${d?' (last '+d+')':''}`,
         countedToday:'counted today', underMin:(t,m)=>`⚠ Total ${t} – under minimum order ${m}, supplier may not deliver`,
-        sendWa:'Send on WhatsApp', sendTo:n=>`Send to ${n}`, xtraShow:n=>`+ Other items (${n})`, xtraHide:'▲ Hide other items', xtraMeta:'Jinjang · when needed', copy:'Copy message', copied:'Copied', orderedToday:'✓ Ordered today', markOrdered:'Mark as ordered', noWa:'No WhatsApp for this supplier – tell them the list above (in person / by phone), then tap Mark as ordered.', recorded:'Order recorded', noOrder:'Nothing to order', belowMinShort:(n,m)=>`only ${n} needed, under minimum ${m}`, idleTitle:'No order needed today', enough:'stock enough', nothingToday:'Nothing to order today ✓', tapOpen:'tap to order by hand', closeCard:'close', belowMin:(n,m)=>`No order today – only ${n} needed, under minimum ${m}`, noSup:'No supplier items set up yet' },
+        sendWa:'Send on WhatsApp', sendTo:n=>`Send to ${n}`, xtraMeta:'Jinjang · when needed', setsLbl:'Jinjang cooking:', setHint:(n,q,u)=>`${n} batch ${q} ${u}`, copy:'Copy message', copied:'Copied', orderedToday:'✓ Ordered today', markOrdered:'Mark as ordered', noWa:'No WhatsApp for this supplier – tell them the list above (in person / by phone), then tap Mark as ordered.', recorded:'Order recorded', noOrder:'Nothing to order', belowMinShort:(n,m)=>`only ${n} needed, under minimum ${m}`, idleTitle:'No order needed today', enough:'stock enough', nothingToday:'Nothing to order today ✓', tapOpen:'tap to order by hand', closeCard:'close', belowMin:(n,m)=>`No order today – only ${n} needed, under minimum ${m}`, noSup:'No supplier items set up yet' },
   zh: { title:'每日盘点', logout:'登出', search:'搜索货品…', pin:'请输入密码', login:'登录', checking:'检查中…',
         wrongPin:'密码错误', again:'请重新登录', loading:'加载中…', noItems:'没有货品', all:'全部',
         prog:(d,n)=>`今日已点 ${d}/${n}`, unsaved:n=>` · ${n} 项未保存`, clear:'清除', save:'保存', saveN:n=>`保存 (${n})`,
@@ -278,7 +278,7 @@ const TXT = {
         order:'订货', orderTitle:'供应商订货', bsdOff:'BSD 明天休息（新⇒休息）', jjHas:'增江现有', jjNotToday:'增江今天还没点', jjNotList:'不在增江盘点表', jjNoLv:'增江还没设定数量', jjLvLink:'增江设定', jjLvTitle:n=>`${n} – 增江设定数量`, jjLvNote:'增江的订货数量会按这些设定和增江的盘点自己算。', lvOff:'补到 – 供应商休息日的前一天', jjLbl:'增江', bsdLbl:'BSD', toJJ:'送增江', toBSD:'送 BSD', toBoth:'送增江 + BSD', sendWa2:'WhatsApp（第二个号码）', delivery:d=>`明天送货（${d}）`, offTmr:(n,d)=>`${n} 明天休息（${d}）– 今天不用订`,
         beforeOff:'明天之后是休息日 – 订到较高的库存量', fillOff:(n,u)=>`补到 ${n} ${u}（休息日前）`, onHand:'现有', par:'标准量', notToday:d=>`⚠ 今天还没点${d?'（上次 '+d+'）':''}`,
         countedToday:'今天已点', underMin:(t,m)=>`⚠ 总数 ${t} – 少于最低订量 ${m}，供应商可能不送`,
-        sendWa:'用 WhatsApp 发送', sendTo:n=>`发给 ${n}`, xtraShow:n=>`+ 其他货品（${n}）`, xtraHide:'▲ 收起其他货品', xtraMeta:'增江 · 需要时才订', copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', markOrdered:'标记为已订', noWa:'这个供应商没有 WhatsApp – 当面或打电话告诉他上面的清单，然后点「标记为已订」。', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
+        sendWa:'用 WhatsApp 发送', sendTo:n=>`发给 ${n}`, xtraMeta:'增江 · 需要时才订', setsLbl:'增江要煮：', setHint:(n,q,u)=>`${n}一批 ${q} ${u}`, copy:'复制讯息', copied:'已复制', orderedToday:'✓ 今天已订', markOrdered:'标记为已订', noWa:'这个供应商没有 WhatsApp – 当面或打电话告诉他上面的清单，然后点「标记为已订」。', recorded:'订单已记录', noOrder:'不需要订', belowMinShort:(n,m)=>`只需要 ${n}，少于最低订量 ${m}`, idleTitle:'今天不用订', enough:'库存足够', nothingToday:'今天没有要订的 ✓', tapOpen:'点击可手动订货', closeCard:'关闭', belowMin:(n,m)=>`今天不用订 – 只需要 ${n}，少于最低订量 ${m}`, noSup:'还没有设定供应商货品' }
 };
 const AREA_ZH = { 'Bar':'吧台', 'Kitchen':'厨房', 'Front desk':'前台', 'Owner':'老板', 'Jinjang':'增江', 'View only':'只能查看', 'Month-End':'月底盘点' };
 function whoKey(u){ u = u || {}; return u.role === 'Owner' ? 'Owner' : u.role === 'Jinjang' ? 'Jinjang' : u.role === 'Viewer' ? 'View only' : u.area; }
@@ -874,7 +874,8 @@ function drawOrders(){
   const cards = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? card(s, si) : '').join('');
   const idle = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? '' :
     `<div class="it" onclick="openSup(${si})"><b>${esc(s.name)}</b> – ${esc(s.offTomorrow ? T('offTmr', s.name, OD.tomorrow.label) : s.belowMin ? T('belowMinShort', s.need, s.minOrder) : T('enough'))} <span class="sub">· ${T('tapOpen')}</span></div>`).join('');
-  $('#body').innerHTML = `<label class="cmeta" style="display:flex;gap:8px;align-items:center;padding:10px 14px 0"><input type="checkbox" ${OD.bsdOff ? 'checked' : ''} onchange="OD.bsdOff=this.checked;OD.suppliers.forEach(s=>delete s.active);drawOrders()"> ${T('bsdOff')}</label>` + (cards || `<div class="empty">${T('nothingToday')}</div>`) +
+  const setRow = (OD.sets || []).length ? `<div class="cmeta" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px 0"><span>${T('setsLbl')}</span>${OD.sets.map((x, i) => `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${OD.setOn && OD.setOn[x.name] ? 'checked' : ''} onchange="setTog(${i}, this.checked)"> ${esc(LANG === 'zh' ? x.zh : x.name)}</label>`).join('')}</div>` : '';
+  $('#body').innerHTML = setRow + `<label class="cmeta" style="display:flex;gap:8px;align-items:center;padding:10px 14px 0"><input type="checkbox" ${OD.bsdOff ? 'checked' : ''} onchange="OD.bsdOff=this.checked;OD.suppliers.forEach(s=>delete s.active);drawOrders()"> ${T('bsdOff')}</label>` + (cards || `<div class="empty">${T('nothingToday')}</div>`) +
     (idle ? `<div class="idle"><div style="margin-bottom:4px">${T('idleTitle')}</div>${idle}</div>` : '');
   document.querySelectorAll('#body .qty').forEach(inp => inp.addEventListener('change', e => {
     const s = OD.suppliers[e.target.dataset.s], l = s.lines[e.target.dataset.l], f = e.target.dataset.f || 'qty';
@@ -884,6 +885,9 @@ function drawOrders(){
 }
 // v116: 60146663388 → 014-666 3388 (button text when no contact name is set)
 function waNo(w){ w = String(w || ''); const d = w.startsWith('60') ? '0' + w.slice(2) : w; return d.length > 7 ? d.slice(0,3) + '-' + d.slice(3, d.length - 4) + ' ' + d.slice(-4) : d; }
+// v119: tick a Jinjang cooking batch → its bought items appear on their supplier cards (card opens)
+function setTog(i, on){ const n = OD.sets[i].name; OD.setOn = OD.setOn || {}; OD.setOn[n] = on;
+  OD.suppliers.forEach(s => { if (on && s.lines.some(l => l.extra && (l.sets || []).some(x => x.set === n))) s.open = true; }); drawOrders(); }
 function l_more(si, li){ const l = OD.suppliers[si].lines[li]; l.more = !l.more; drawOrders(); }
 function openSup(si){ OD.suppliers[si].open = true; drawOrders(); }
 function closeSup(si){ const s = OD.suppliers[si]; s.open = false; s.lines.forEach(l => { l.qty = 0; l.jj = ''; }); drawOrders(); }
@@ -901,18 +905,18 @@ function card(s, si){
             + (isBoss() && l.src !== 'BSD' ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
         // v115: short line = what each place has (red date = not counted today); the rules and links only after tapping ⓘ
         const sh = [];
-        if (l.extra) sh.push(T('xtraMeta'));
+        if (l.extra) sh.push((l.sets || []).filter(x => OD.setOn && OD.setOn[x.set]).map(x => T('setHint', LANG === 'zh' ? x.zh : x.set, x.qty, x.unit)).join(' · ') || T('xtraMeta'));
         else if (l.deliv !== 'BSD') sh.push(!l.jjIn ? `<span style="color:var(--red)">${T('jjNotList')}</span>`
           : `${l.src === 'BSD' ? 'BSD ' + T('stockTab') : T('jjLbl')} <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}${l.jjToday ? '' : ` <span class="old">(${dd(l.jjWhen)})</span>`}`);
         if (bsdInfo) sh.push(`BSD <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(u)}${l.onHand === '' || l.countedToday ? '' : ` <span class="old">(${dd(l.when)})</span>`}`);
         const more = `<a href="#" class="more" onclick="l_more(${si},${li});return false">ⓘ</a>`;
         const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl') + (l.oUnit ? ' · ' + l.oUnit : ''), f === 'jj' ? l.jj : l.qty, '–').replace('class="qty sm"', 'class="qty sm ordq"');   // v114: View-only can order too
-        if (l.extra && !s.showX && !(Number(l.jj) > 0)) return '';   // v118: other items stay hidden until "+ Other items" is tapped (or one has a number)
+        if (l.extra && !(l.sets || []).some(x => OD.setOn && OD.setOn[x.set]) && !(Number(l.jj) > 0)) return '';   // v119: bought-for-a-batch items only show when their cooking (咖喱 / 马来盏) is ticked
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
           <div class="meta">${sh.join('<br>')} ${more}${l.more ? `<div class="mdet">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${jjInfo ? '<br>' + jjInfo : ''}${bsdInfo ? '<br>' + bsdInfo : ''}</div>` : ''}</div></div>
         <div class="qins">${l.deliv !== 'BSD' ? box('jj') : ''}${l.deliv !== 'JJ' ? box('qty') : ''}</div></div>`; }).join('')
-      + (() => { const n = s.lines.filter(l => l.extra).length; return n ? `<div class="row" style="justify-content:center"><a href="#" onclick="OD.suppliers[${si}].showX=!OD.suppliers[${si}].showX;drawOrders();return false">${s.showX ? T('xtraHide') : T('xtraShow', n)}</a></div>` : ''; })();
+      ;
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
     const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
     const manual = s.open && !s.active && !s.orderedToday;
@@ -1764,7 +1768,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v118';
+const APP_V = 'v119';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
