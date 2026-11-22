@@ -60,7 +60,7 @@
   .tkl .row.done .name::after { content:none; }   /* Daily + Stock use the WhatsApp-style ticks instead */
   .hint { font-size:14.5px; color:var(--muted); margin-top:1px; }
   .meta { font-size:13px; color:var(--muted); margin-top:2px; }
-  .meta .old { color:var(--red); } .meta .more { text-decoration:none; font-size:15px; padding:0 4px; } .meta .mdet { margin-top:4px; padding:6px 8px; background:var(--bg, #f6f3ee); border-radius:8px; }
+  .setck { display:inline-flex; gap:4px; align-items:center; font-size:14px; font-weight:500; margin-right:12px; } .setcks { margin-left:10px; } .meta .old { color:var(--red); } .meta .more { text-decoration:none; font-size:15px; padding:0 4px; } .meta .mdet { margin-top:4px; padding:6px 8px; background:var(--bg, #f6f3ee); border-radius:8px; }
   .qty { width:84px; flex:none; text-align:center; font-size:20.5px; padding:9px 6px; border:1.5px solid var(--line); border-radius:10px; background:#fff; }
   .qty:focus { outline:none; border-color:var(--ink); }
   .qty.changed { border-color:var(--brand); background:#fdf3ef; }
@@ -873,9 +873,8 @@ function drawOrders(){
   OD.suppliers.forEach(s => { if (s.active === undefined) s.active = !s.offTomorrow && supTotal(s) > 0; });   // a supplier shows only when something needs ordering (BSD count or Jinjang count)
   const cards = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? card(s, si) : '').join('');
   const idle = OD.suppliers.map((s, si) => (s.active || s.orderedToday || s.open) ? '' :
-    `<div class="it" onclick="openSup(${si})"><b>${esc(s.name)}</b> – ${esc(s.offTomorrow ? T('offTmr', s.name, OD.tomorrow.label) : s.belowMin ? T('belowMinShort', s.need, s.minOrder) : T('enough'))} <span class="sub">· ${T('tapOpen')}</span></div>`).join('');
-  const setRow = (OD.sets || []).length ? `<div class="cmeta" style="display:flex;flex-wrap:wrap;gap:6px 14px;align-items:center;padding:10px 14px 0"><span>${T('setsLbl')}</span>${OD.sets.map((x, i) => `<label style="display:flex;gap:6px;align-items:center"><input type="checkbox" ${OD.setOn && OD.setOn[x.name] ? 'checked' : ''} onchange="setTog(${i}, this.checked)"> ${esc(LANG === 'zh' ? x.zh : x.name)}</label>`).join('')}</div>` : '';
-  $('#body').innerHTML = setRow + `<label class="cmeta" style="display:flex;gap:8px;align-items:center;padding:10px 14px 0"><input type="checkbox" ${OD.bsdOff ? 'checked' : ''} onchange="OD.bsdOff=this.checked;OD.suppliers.forEach(s=>delete s.active);drawOrders()"> ${T('bsdOff')}</label>` + (cards || `<div class="empty">${T('nothingToday')}</div>`) +
+    `<div class="it" onclick="openSup(${si})"><b>${esc(s.name)}</b> – ${esc(s.offTomorrow ? T('offTmr', s.name, OD.tomorrow.label) : s.belowMin ? T('belowMinShort', s.need, s.minOrder) : T('enough'))} <span class="sub">· ${T('tapOpen')}</span>${setChips(s) ? `<div style="margin-top:4px">${setChips(s)}</div>` : ''}</div>`).join('');
+  $('#body').innerHTML = `<label class="cmeta" style="display:flex;gap:8px;align-items:center;padding:10px 14px 0"><input type="checkbox" ${OD.bsdOff ? 'checked' : ''} onchange="OD.bsdOff=this.checked;OD.suppliers.forEach(s=>delete s.active);drawOrders()"> ${T('bsdOff')}</label>` + (cards || `<div class="empty">${T('nothingToday')}</div>`) +
     (idle ? `<div class="idle"><div style="margin-bottom:4px">${T('idleTitle')}</div>${idle}</div>` : '');
   document.querySelectorAll('#body .qty').forEach(inp => inp.addEventListener('change', e => {
     const s = OD.suppliers[e.target.dataset.s], l = s.lines[e.target.dataset.l], f = e.target.dataset.f || 'qty';
@@ -886,6 +885,9 @@ function drawOrders(){
 // v116: 60146663388 → 014-666 3388 (button text when no contact name is set)
 function waNo(w){ w = String(w || ''); const d = w.startsWith('60') ? '0' + w.slice(2) : w; return d.length > 7 ? d.slice(0,3) + '-' + d.slice(3, d.length - 4) + ' ' + d.slice(-4) : d; }
 // v119: tick a Jinjang cooking batch → its bought items appear on their supplier cards (card opens)
+// v121: the cooking ticks sit on the supplier's own row (card title / idle line), only where that supplier has items for it
+function setChips(s){ return (OD.sets || []).map((x, i) => s.lines.some(l => l.extra && (l.sets || []).some(y => y.set === x.name))
+  ? `<label class="setck" onclick="event.stopPropagation()"><input type="checkbox" ${OD.setOn && OD.setOn[x.name] ? 'checked' : ''} onchange="setTog(${i}, this.checked)"> ${esc(LANG === 'zh' ? x.zh : x.name)}</label>` : '').join(''); }
 function setTog(i, on){ const n = OD.sets[i].name; OD.setOn = OD.setOn || {}; OD.setOn[n] = on;
   OD.suppliers.forEach(s => { if (on && s.lines.some(l => l.extra && (l.sets || []).some(x => x.set === n))) s.open = true; }); drawOrders(); }
 function l_more(si, li){ const l = OD.suppliers[si].lines[li]; l.more = !l.more; drawOrders(); }
@@ -905,13 +907,13 @@ function card(s, si){
             + (isBoss() && l.src !== 'BSD' ? ` · <a href="#" onclick="openJJLv(${si},${li});return false">${T('jjLvLink')}</a>` : '');
         // v115: short line = what each place has (red date = not counted today); the rules and links only after tapping ⓘ
         const sh = [];
-        if (l.extra) sh.push((l.sets || []).filter(x => OD.setOn && OD.setOn[x.set]).map(x => x.qty === '' || x.qty === null || x.qty === undefined ? (LANG === 'zh' ? x.zh : x.set) : T('setHint', LANG === 'zh' ? x.zh : x.set, x.qty, x.unit)).join(' · ') || T('xtraMeta'));
+        if (l.extra) sh.push((l.sets || []).filter(x => x.set !== 'Always' && OD.setOn && OD.setOn[x.set]).map(x => x.qty === '' || x.qty === null || x.qty === undefined ? (LANG === 'zh' ? x.zh : x.set) : T('setHint', LANG === 'zh' ? x.zh : x.set, x.qty, x.unit)).join(' · ') || T('xtraMeta'));
         else if (l.deliv !== 'BSD') sh.push(!l.jjIn ? `<span style="color:var(--red)">${T('jjNotList')}</span>`
           : `${l.src === 'BSD' ? 'BSD ' + T('stockTab') : T('jjLbl')} <b>${l.jjOnHand === '' || l.jjOnHand === undefined ? '–' : esc(l.jjOnHand)}</b> ${esc(ju)}${l.jjToday ? '' : ` <span class="old">(${dd(l.jjWhen)})</span>`}`);
         if (bsdInfo) sh.push(`BSD <b>${l.onHand===''?'–':esc(l.onHand)}</b> ${esc(u)}${l.onHand === '' || l.countedToday ? '' : ` <span class="old">(${dd(l.when)})</span>`}`);
         const more = `<a href="#" class="more" onclick="l_more(${si},${li});return false">ⓘ</a>`;
         const box = f => qtyBox(`data-s="${si}" data-l="${li}" data-f="${f}"`, T(f === 'jj' ? 'jjLbl' : 'bsdLbl') + (l.oUnit ? ' · ' + l.oUnit : ''), f === 'jj' ? l.jj : l.qty, '–').replace('class="qty sm"', 'class="qty sm ordq"');   // v114: View-only can order too
-        if (l.extra && !(l.sets || []).some(x => OD.setOn && OD.setOn[x.set]) && !(Number(l.jj) > 0)) return '';   // v119: bought-for-a-batch items only show when their cooking (咖喱 / 马来盏) is ticked
+        if (l.extra && !(l.sets || []).some(x => x.set === 'Always' || (OD.setOn && OD.setOn[x.set])) && !(Number(l.jj) > 0)) return '';   // v119: bought-for-a-batch items only show when their cooking (咖喱 / 马来盏) is ticked
         return `<div class="row">
         <div class="info"><div class="name">${esc(itemName(l))}${itemSub(l)?` <span class="sub">${esc(itemSub(l))}</span>`:''}</div>
           <div class="meta">${sh.join('<br>')} ${more}${l.more ? `<div class="mdet">${T(l.deliv === 'BSD' ? 'toBSD' : l.deliv === 'BOTH' ? 'toBoth' : 'toJJ')}${jjInfo ? '<br>' + jjInfo : ''}${bsdInfo ? '<br>' + bsdInfo : ''}</div>` : ''}</div></div>
@@ -920,7 +922,7 @@ function card(s, si){
     const under = !s.offTomorrow && s.minOrder && total > 0 && total < s.minOrder ? `<div class="warn">${esc(T('underMin', total, s.minOrder))}</div>` : '';
     const dis = s.offTomorrow || total === 0 || !s.wa || (s.minOrder && total < s.minOrder);
     const manual = s.open && !s.active && !s.orderedToday;
-    return `<div class="card ordc"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${manual?`<span class="sub" style="font-size:15px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
+    return `<div class="card ordc"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${setChips(s) ? `<span class="setcks">${setChips(s)}</span>` : ''}${manual?`<span class="sub" style="font-size:15px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
       ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
       <div class="actions">${s.wa ? `<button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>` : ''}
       ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${s.wa2 ? esc(T('sendTo', s.contact || waNo(s.wa))) : T('sendWa')}</a>${s.wa2 ? `<a class="btn wa ${dis?'dis':''}" href="${dis?'#':waLink(s, 2)}" target="_blank" onclick="recordOrder(${si})">${esc(T('sendTo', s.contact2 || waNo(s.wa2)))}</a>` : ''}`
@@ -1768,7 +1770,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v120';
+const APP_V = 'v121';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
