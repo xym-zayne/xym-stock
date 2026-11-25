@@ -876,11 +876,20 @@ function drawOrders(){
     `<div class="it" onclick="openSup(${si})"><b>${esc(s.name)}</b> – ${esc(s.offTomorrow ? T('offTmr', s.name, OD.tomorrow.label) : s.belowMin ? T('belowMinShort', s.need, s.minOrder) : T('enough'))} <span class="sub">· ${T('tapOpen')}</span>${setChips(s) ? `<div style="margin-top:4px">${setChips(s)}</div>` : ''}</div>`).join('');
   $('#body').innerHTML = `<label class="cmeta" style="display:flex;gap:8px;align-items:center;padding:10px 14px 0"><input type="checkbox" ${OD.bsdOff ? 'checked' : ''} onchange="OD.bsdOff=this.checked;OD.suppliers.forEach(s=>delete s.active);drawOrders()"> ${T('bsdOff')}</label>` + (cards || `<div class="empty">${T('nothingToday')}</div>`) +
     (idle ? `<div class="idle"><div style="margin-bottom:4px">${T('idleTitle')}</div>${idle}</div>` : '');
-  document.querySelectorAll('#body .qty').forEach(inp => inp.addEventListener('change', e => {
+  // v123: the message and the send buttons update while typing (no redraw, so the first tap on Send works)
+  document.querySelectorAll('#body .qty').forEach(inp => { const up = e => {
     const s = OD.suppliers[e.target.dataset.s], l = s.lines[e.target.dataset.l], f = e.target.dataset.f || 'qty';
     const v = e.target.value.trim(); l[f] = v === '' || isNaN(Number(v)) ? (f === 'jj' ? '' : 0) : Math.max(0, Math.round(Number(v) * 100) / 100);
-    drawOrders();
-  }));
+    liveCard(Number(e.target.dataset.s)); };
+    inp.addEventListener('input', up); inp.addEventListener('change', up); });
+}
+function liveCard(si){
+  const s = OD.suppliers[si]; if (!s) return; const total = supTotal(s), low = s.minOrder && total < s.minOrder;
+  const dis = s.offTomorrow || total === 0 || !s.wa || low;
+  const m = document.getElementById('msg' + si); if (m) m.textContent = total ? orderMsg(s) : T('noOrder');
+  [['wa' + si, 1], ['wa' + si + 'b', 2]].forEach(([id, n]) => { const a = document.getElementById(id); if (!a) return; a.classList.toggle('dis', !!dis); a.href = dis ? '#' : waLink(s, n); });
+  const c = document.getElementById('cp' + si); if (c) c.disabled = !total;
+  const mo = document.getElementById('mo' + si); if (mo) mo.disabled = !!(s.offTomorrow || total === 0 || low);
 }
 // v116: 60146663388 → 014-666 3388 (button text when no contact name is set)
 function waNo(w){ w = String(w || ''); const d = w.startsWith('60') ? '0' + w.slice(2) : w; return d.length > 7 ? d.slice(0,3) + '-' + d.slice(3, d.length - 4) + ' ' + d.slice(-4) : d; }
@@ -925,9 +934,9 @@ function card(s, si){
     const manual = s.open && !s.active && !s.orderedToday;
     return `<div class="card ordc"><h3 ${manual?`onclick="closeSup(${si})" style="cursor:pointer;display:flex;justify-content:space-between"`:''}>${esc(s.name)}${setChips(s) ? `<span class="setcks">${setChips(s)}</span>` : ''}${manual?`<span class="sub" style="font-size:15px">${T('closeCard')} ▲</span>`:''}</h3>${head}<div class="list" style="margin:0 0 10px;border-left:0;border-right:0;border-radius:0">${rows}</div>
       ${under}<div class="msg" id="msg${si}">${total ? esc(orderMsg(s)) : T('noOrder')}</div>
-      <div class="actions">${s.wa ? `<button class="btn clear" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>` : ''}
-      ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${s.wa2 ? esc(T('sendTo', s.contact || waNo(s.wa))) : T('sendWa')}</a>${s.wa2 ? `<a class="btn wa ${dis?'dis':''}" href="${dis?'#':waLink(s, 2)}" target="_blank" onclick="recordOrder(${si})">${esc(T('sendTo', s.contact2 || waNo(s.wa2)))}</a>` : ''}`
-             : `<button class="btn save" onclick="recordOrder(${si})" ${(s.offTomorrow || total === 0 || (s.minOrder && total < s.minOrder)) ? 'disabled' : ''}>${T('markOrdered')}</button>`}</div>
+      <div class="actions">${s.wa ? `<button class="btn clear" id="cp${si}" onclick="copyMsg(${si})" ${total?'':'disabled'}>${T('copy')}</button>` : ''}
+      ${s.wa ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}" href="${dis?'#':waLink(s)}" target="_blank" onclick="recordOrder(${si})">${s.wa2 ? esc(T('sendTo', s.contact || waNo(s.wa))) : T('sendWa')}</a>${s.wa2 ? `<a class="btn wa ${dis?'dis':''}" id="wa${si}b" href="${dis?'#':waLink(s, 2)}" target="_blank" onclick="recordOrder(${si})">${esc(T('sendTo', s.contact2 || waNo(s.wa2)))}</a>` : ''}`
+             : `<button class="btn save" id="mo${si}" onclick="recordOrder(${si})" ${(s.offTomorrow || total === 0 || (s.minOrder && total < s.minOrder)) ? 'disabled' : ''}>${T('markOrdered')}</button>`}</div>
       ${s.wa ? '' : `<div class="cmeta">${T('noWa')}</div>`}</div>`;
 }
 // Owner: Jinjang levels (JJCount) for one item – same rule as BSD levels, plus "fill up to" before the supplier's off day
@@ -1771,7 +1780,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v122';
+const APP_V = 'v123';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
