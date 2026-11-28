@@ -1779,7 +1779,7 @@ async function saveVB(){
 Object.assign(TXT.en, { switchAcc:'Switch', switchT:'Switch account', viewAs:a=>`👁 Viewing as ${a} · tap here to go back to Owner`, ownerShort:'Owner' });
 Object.assign(TXT.zh, { switchAcc:'切换', switchT:'切换账号', viewAs:a=>`👁 正在以「${a}」身份查看 · 点这里回到老板`, ownerShort:'老板' });
 let ACCTS = null;
-const APP_V = 'v124';
+const APP_V = 'v125';
 Object.assign(TXT.en, { ordOn:d=>`ordered ${d}` }); Object.assign(TXT.zh, { ordOn:d=>`${d} 已订` });
 Object.assign(TXT.en, { dlCarry:d=>`not counted – last count ${d}`, dlTimes:n=>`saved ${n}×, last one shown` });
 Object.assign(TXT.zh, { dlCarry:d=>`没点 – 上次点 ${d}`, dlTimes:n=>`存了 ${n} 次，显示最后一次` });   // shown beside Log out – tells which version a phone is running
@@ -1910,7 +1910,7 @@ try { SGRP = localStorage.getItem('xym_sgrp') || 'Jinjang'; } catch(e){}
 const SGROUPS = ['Jinjang', 'Noodle'];   // pages. The Jinjang page shows 2 sections: Jinjang-made (Jinjang) + Bought-in (Bought)
 const grpOf = i => i.grp === 'Noodle' ? 'Noodle' : i.grp === 'Bought' ? 'Bought' : 'Jinjang';
 // Noodle order window: Friday 06:00 → Saturday 13:00 (Zayne 14 Nov: the noodle order can be made up to Saturday 1 pm) – the noodle supplier comes to BSD → noodles become BSD's own self order
-const noNoodleDay = () => { const d = new Date(), h = d.getHours() + d.getMinutes() / 60; return (d.getDay() === 5 && h >= 6) || (d.getDay() === 6 && h < 13); };
+const noNoodleDay = () => { const d = new Date(), h = d.getHours() + d.getMinutes() / 60; return (d.getDay() === 5 && h >= 6) || (d.getDay() === 6 && h < 22); };   // v125: window now Fri 06:00 → Sat 22:00 (Zayne 28/11: vendor sometimes comes late)
 const skipNoodle = i => noNoodleDay() && (i.grp === 'Noodle' || i.sg === 'Noodle');
 const pageOf = i => grpOf(i) === 'Noodle' ? 'Noodle' : 'Jinjang';
 let ADDG = 'Jinjang';   // + Add item on the Jinjang page: into Jinjang-made or Bought-in
